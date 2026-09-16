@@ -1,0 +1,24 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Jimver/cuda-toolkit@v0.2.27
+        with:
+          cuda: '13.0.2'
+          method: network
+          sub-packages: '["nvcc", "nvrtc", "cudart", "cccl"]'
+      - name: Dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libgl-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxkbcommon-dev libwayland-dev wayland-protocols
+      - name: Configure
+        run: cmake --preset dev
+      - name: Build
+        run: cmake --build --preset dev
+      - name: Test
+        run: ctest --preset dev

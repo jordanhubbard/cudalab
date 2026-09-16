@@ -1,0 +1,8 @@
+{
+  "name": "00-spectrum",
+  "title": "Hello, Spectrum",
+  "description": "The smallest complete Cudalab kernel: one GPU thread per pixel, animated color, pointer interaction, and tone mapping.",
+  "category": "START HERE",
+  "entry": "spectrum.cu",
+  "controls": "Move the pointer"
+}

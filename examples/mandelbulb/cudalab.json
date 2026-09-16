@@ -1,0 +1,8 @@
+{
+  "name": "mandelbulb",
+  "title": "Mandelbulb Cathedral",
+  "description": "A distance-estimated eighth-order fractal with soft shadows, orbit traps, atmospheric glow, and a perpetual camera flight.",
+  "category": "FRACTALS",
+  "entry": "mandelbulb.cu",
+  "controls": "Move pointer to orbit"
+}
