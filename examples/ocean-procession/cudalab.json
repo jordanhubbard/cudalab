@@ -1,9 +1,11 @@
 {
   "name": "ocean-procession",
   "title": "Ocean Procession",
-  "description": "A fleet of fully modeled sailboats crosses a smooth many-octave sea, pitching and rolling through reflected sky, refracted light, caustics, foam, and wakes.",
+  "description": "A persistent GPU flotilla flocks, separates, and sails a wind-shaped many-octave sea through reflected sky, refracted light, caustics, foam, and wakes.",
   "category": "OCEAN & ATMOSPHERE",
   "entry": "ocean-procession.cu",
-  "controls": "Move horizontally to orbit · Move vertically to dive and zoom",
-  "techniques": "differentiable directional waves · stable Newton intersection · analytic buoyancy · ray-traced sailboats · Fresnel reflection and refraction"
+  "controls": "Move pointer to steer the wind · Number keys 0-9 select Beaufort force",
+  "techniques": "persistent GPU flocking · collision avoidance · wind-coupled differentiable waves · analytic buoyancy · ray-traced sailboats · Fresnel reflection and refraction",
+  "state_bytes": 4096,
+  "work_items": 12
 }

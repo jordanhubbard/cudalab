@@ -78,6 +78,10 @@ Pointer input includes normalized position, per-frame `mouse_dx`/`mouse_dy`, and
 `mouse_down`. Gesture-driven pieces can therefore distinguish hovering, sweeping, and a
 pressed brush without private host code.
 
+`params.beaufort` carries the studio's number-key wind setting from 0 (calm) through 9
+(strong gale). Wind-aware pieces remain responsible for mapping pointer position to a
+direction and for showing that direction in their composition.
+
 Reset and simulation stay outside the graph on the simulation stream. This keeps one-time
 reset behavior explicit and makes the cross-stream dependency visible instead of relying on
 legacy default-stream ordering.

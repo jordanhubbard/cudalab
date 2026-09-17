@@ -258,6 +258,19 @@ int Application::run() {
         } else if (event.key.key == SDLK_SPACE && !ImGui::GetIO().WantTextInput) {
           paused_ = !paused_;
           shortcut_handled = true;
+        } else if (!ImGui::GetIO().WantTextInput && event.key.key >= SDLK_0 && event.key.key <= SDLK_9) {
+          beaufort_ = static_cast<int>(event.key.key - SDLK_0);
+          render_requested_ = true;
+          shortcut_handled = true;
+        } else if (!ImGui::GetIO().WantTextInput && event.key.key >= SDLK_KP_1 &&
+                   event.key.key <= SDLK_KP_9) {
+          beaufort_ = static_cast<int>(event.key.key - SDLK_KP_1) + 1;
+          render_requested_ = true;
+          shortcut_handled = true;
+        } else if (!ImGui::GetIO().WantTextInput && event.key.key == SDLK_KP_0) {
+          beaufort_ = 0;
+          render_requested_ = true;
+          shortcut_handled = true;
         }
       }
       if (!shortcut_handled)
@@ -301,7 +314,8 @@ int Application::run() {
                                quality_,
                                mouse_dx_,
                                mouse_dy_,
-                               mouse_down_};
+                               mouse_down_,
+                               beaufort_};
       const auto& audio = cuda_->synthesize_audio(audio_params);
       SDL_PutAudioStreamData(audio_stream_, audio.data(), static_cast<int>(audio.size() * sizeof(float2)));
     }
@@ -548,6 +562,8 @@ void Application::draw_preview() {
     ImGui::SameLine();
     ImGui::TextDisabled("%.1f BPM", demo.bpm);
   }
+  if (!catalog_.demos().empty() && catalog_.demos()[selected_].name == "ocean-procession")
+    ImGui::TextDisabled("Wind: Beaufort %d  |  0-9 changes force  |  pointer changes direction", beaufort_);
   const ImVec2 area = ImGui::GetContentRegionAvail();
   const int width = std::max(64, static_cast<int>(area.x));
   const int height = std::max(64, static_cast<int>(area.y));
@@ -565,7 +581,8 @@ void Application::draw_preview() {
                      quality_,
                      mouse_dx_,
                      mouse_dy_,
-                     mouse_down_};
+                     mouse_down_,
+                     beaufort_};
   if ((!paused_ || render_requested_) && cuda_->ready()) {
     gpu_ms_ = cuda_->render(params);
     render_requested_ = false;

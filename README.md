@@ -109,6 +109,7 @@ Optional stereo audio is synthesized on the GPU and queued to SDL's native audio
 - **Space** — pause/resume while the editor is not focused
 - Move over the preview — update `params.mouse_x/y` and gesture deltas
 - Hold the primary pointer button — set `params.mouse_down` for pressure-like interaction
+- Number keys **0–9** — select Beaufort wind force for wind-aware pieces
 
 The native editor provides CUDA C++ syntax highlighting, line numbers, bracket matching,
 a source minimap, and inline NVRTC error/warning markers. Formatting uses `clang-format`

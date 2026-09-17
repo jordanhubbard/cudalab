@@ -20,6 +20,7 @@ struct CudalabParams {
   float mouse_dx = 0.0f;
   float mouse_dy = 0.0f;
   int mouse_down = 0;
+  int beaufort = 4;
 };
 
 struct CudalabResource {

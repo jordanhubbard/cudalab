@@ -27,4 +27,8 @@ int main() {
   assert(choreograph->resources.size() == 3);
   assert(choreograph->resources[0].kind == cudalab::ResourceKind::buffer);
   assert(choreograph->resources[1].kind == cudalab::ResourceKind::surface2d);
+  const auto ocean = std::ranges::find(catalog.demos(), "ocean-procession", &cudalab::Demo::name);
+  assert(ocean != catalog.demos().end());
+  assert(ocean->work_items == 12);
+  assert(ocean->state_bytes >= 12 * sizeof(float) * 8);
 }
