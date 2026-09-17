@@ -1,0 +1,9 @@
+{
+  "name": "volumetric-tempest",
+  "title": "Volumetric Tempest",
+  "description": "A cathedral-sized storm is sculpted from hundreds of millions of turbulent density samples, with a living helix of lightning trapped inside.",
+  "category": "VOLUMETRIC WORLDS",
+  "entry": "volumetric-tempest.cu",
+  "controls": "Move pointer to circle and enter the storm",
+  "techniques": "deep volumetric ray marching · domain-warped turbulence · emission and absorption · procedural lightning · adaptive quality"
+}

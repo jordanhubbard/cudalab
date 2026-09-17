@@ -11,7 +11,7 @@ medium is native CUDA C++ rather than JavaScript.
 
 > **Status:** early, working studio. The live compiler, staged kernel lifecycle,
 > persistent device state, GPU audio, CUDA/OpenGL interop, package catalog, editor,
-> diagnostics, GPU timing, and first fourteen pieces are present. The roadmap deliberately
+> diagnostics, GPU timing, and first sixteen pieces are present. The roadmap deliberately
 > starts narrow and deep rather than shipping fifty mediocre demos.
 
 ## The first gallery
@@ -32,6 +32,8 @@ medium is native CUDA C++ rather than JavaScript.
 | **Feedback Cathedral** | Persistent recursive framebuffer and temporal image warping |
 | **Spectral Orchard** | CUDA-synthesized stereo score and synchronized nocturnal world |
 | **Choreograph** | Seekable four-movement CUDA graph performance with named GPU memory |
+| **Ocean Procession** | A many-octave sea with reflected sky, wakes, and a buoyant fleet |
+| **Volumetric Tempest** | Deep turbulent ray marching around a living lightning helix |
 
 Every example is procedural, self-contained, live-editable, and runs through the same
 small staged ABI. A failed compile leaves the last good composition running.
@@ -94,8 +96,8 @@ persistent stream-ordered GPU memory and runs the stages as:
 reset (once) → simulate → render → composite → audio
 ```
 
-The host passes resolution, time, frame delta, normalized pointer position, frame number,
-and quality. NVRTC compiles for the **actual installed GPU**. CUDA writes into an OpenGL
+The host passes resolution, time, frame delta, normalized pointer position and motion,
+primary-button pressure, frame number, and quality. NVRTC compiles for the **actual installed GPU**. CUDA writes into an OpenGL
 pixel buffer registered with CUDA graphics interop; OpenGL then displays it directly.
 Optional stereo audio is synthesized on the GPU and queued to SDL's native audio stream.
 
@@ -105,7 +107,8 @@ Optional stereo audio is synthesized on the GPU and queued to SDL's native audio
 - **Ctrl+S** — save
 - **Ctrl+Alt+F** — format CUDA source with the project style
 - **Space** — pause/resume while the editor is not focused
-- Move over the preview — update `params.mouse_x/y`
+- Move over the preview — update `params.mouse_x/y` and gesture deltas
+- Hold the primary pointer button — set `params.mouse_down` for pressure-like interaction
 
 The native editor provides CUDA C++ syntax highlighting, line numbers, bracket matching,
 a source minimap, and inline NVRTC error/warning markers. Formatting uses `clang-format`

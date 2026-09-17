@@ -10,7 +10,7 @@ int main() {
   for (const auto& error : catalog.errors())
     std::cerr << error << '\n';
   assert(catalog.errors().empty());
-  assert(catalog.demos().size() >= 14);
+  assert(catalog.demos().size() >= 16);
   assert(catalog.demos().front().name == "00-spectrum");
   for (const auto& demo : catalog.demos()) {
     assert(!demo.title.empty());

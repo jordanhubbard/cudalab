@@ -291,7 +291,17 @@ int Application::run() {
       const int authored_frame = !catalog_.demos().empty() && catalog_.demos()[selected_].timeline_seconds > 0
                                      ? static_cast<int>(elapsed_ * 60.0f)
                                      : frame_;
-      FrameParams audio_params{0, 0, elapsed_, delta_, mouse_x_, mouse_y_, authored_frame, quality_};
+      FrameParams audio_params{0,
+                               0,
+                               elapsed_,
+                               delta_,
+                               mouse_x_,
+                               mouse_y_,
+                               authored_frame,
+                               quality_,
+                               mouse_dx_,
+                               mouse_dy_,
+                               mouse_down_};
       const auto& audio = cuda_->synthesize_audio(audio_params);
       SDL_PutAudioStreamData(audio_stream_, audio.data(), static_cast<int>(audio.size() * sizeof(float2)));
     }
@@ -545,17 +555,38 @@ void Application::draw_preview() {
   const int authored_frame = !catalog_.demos().empty() && catalog_.demos()[selected_].timeline_seconds > 0
                                  ? static_cast<int>(elapsed_ * 60.0f)
                                  : frame_;
-  FrameParams params{width, height, elapsed_, delta_, mouse_x_, mouse_y_, authored_frame, quality_};
+  FrameParams params{width,
+                     height,
+                     elapsed_,
+                     delta_,
+                     mouse_x_,
+                     mouse_y_,
+                     authored_frame,
+                     quality_,
+                     mouse_dx_,
+                     mouse_dy_,
+                     mouse_down_};
   if ((!paused_ || render_requested_) && cuda_->ready()) {
     gpu_ms_ = cuda_->render(params);
     render_requested_ = false;
   }
   const ImVec2 top_left = ImGui::GetCursorScreenPos();
-  ImGui::Image(static_cast<ImTextureID>(cuda_->texture()), area, {0, 1}, {1, 0});
+  const bool firefly_view =
+      !catalog_.demos().empty() && catalog_.demos()[selected_].name == "firefly-constellation";
+  const ImVec2 preview_uv0 = firefly_view ? ImVec2(.5f, .5f) : ImVec2(0, 0);
+  ImGui::Image(static_cast<ImTextureID>(cuda_->texture()), area, preview_uv0, {1, 1});
   if (ImGui::IsItemHovered()) {
     const auto mouse = ImGui::GetMousePos();
-    mouse_x_ = (mouse.x - top_left.x) / std::max(1.0f, area.x);
-    mouse_y_ = (mouse.y - top_left.y) / std::max(1.0f, area.y);
+    const float next_x = (mouse.x - top_left.x) / std::max(1.0f, area.x);
+    const float next_y = (mouse.y - top_left.y) / std::max(1.0f, area.y);
+    mouse_dx_ = next_x - mouse_x_;
+    mouse_dy_ = next_y - mouse_y_;
+    mouse_x_ = next_x;
+    mouse_y_ = next_y;
+    mouse_down_ = ImGui::IsMouseDown(ImGuiMouseButton_Left) ? 1 : 0;
+  } else {
+    mouse_dx_ = mouse_dy_ = 0.0f;
+    mouse_down_ = 0;
   }
   ImGui::End();
 }

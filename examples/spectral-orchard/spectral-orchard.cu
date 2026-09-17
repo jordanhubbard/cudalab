@@ -49,23 +49,39 @@ CUDALAB_RENDER {
     return;
   float2 uv =
       make_float2((2.0f * x - params.width) / params.height, (params.height - 2.0f * y) / params.height);
+  float zoom = .72f + (1.0f - params.mouse_y) * .9f;
+  uv.x /= zoom;
+  uv.y /= zoom;
   float beat = fmodf(params.time * 2, 1.0f), pulse = expf(-beat * 5);
   float3 color = make_float3(.006f, .009f + .018f * (uv.y + .7f), .028f + .05f * (uv.y + .7f));
+  float stars = powf(.5f + .5f * sinf(uv.x * 173.0f + sinf(uv.y * 91.0f) * 37.0f), 90.0f);
+  color.x += stars * (.25f + .35f * pulse);
+  color.y += stars * .34f;
+  color.z += stars * .55f;
   float aur = .5f + .5f * sinf(uv.x * 5 + sinf(uv.y * 7 + params.time * .2f) * 2);
   color.y += powf(aur, 8) * .035f;
   color.z += powf(aur, 8) * .08f;
+  float orbit = params.time * .055f + (params.mouse_x - .5f) * 1.8f;
   for (int tree = 0; tree < 7; tree++) {
-    float rootx = (tree - 3) * .34f;
+    float wx = (tree - 3) * .36f;
+    float wz = sinf(tree * 2.17f) * .55f;
+    float rootx = wx * cosf(orbit) - wz * sinf(orbit);
+    float depth = wx * sinf(orbit) + wz * cosf(orbit);
+    float perspective = 1.0f / (1.0f + depth * .16f);
+    rootx *= perspective;
     float sway = sinf(params.time * .45f + tree) * .035f * (.3f + params.mouse_x);
-    float trunk = sd_segment(uv, make_float2(rootx, -.78f), make_float2(rootx + sway, .10f));
+    float base = -.78f + depth * .055f;
+    float crown = base + .88f * perspective;
+    float trunk = sd_segment(uv, make_float2(rootx, base), make_float2(rootx + sway, crown));
     float wood = expf(-trunk * 150);
     color.x += wood * .12f;
     color.y += wood * .075f;
     color.z += wood * .035f;
     for (int branch = 0; branch < 5; branch++) {
-      float h = -.38f + branch * .15f, side = (branch & 1) ? 1 : -1;
-      float2 a = make_float2(rootx + sway * (h + .78f) / .88f, h),
-             b = make_float2(a.x + side * (.16f + .025f * branch) + sway, a.y + .20f);
+      float h = base + (.40f + branch * .15f) * perspective, side = (branch & 1) ? 1 : -1;
+      float2 a = make_float2(rootx + sway * (h - base) / fmaxf(.1f, crown - base), h),
+             b = make_float2(a.x + side * (.16f + .025f * branch) * perspective + sway,
+                             a.y + .20f * perspective);
       float twig = expf(-sd_segment(uv, a, b) * 190);
       color.x += twig * .16f;
       color.y += twig * .10f;
@@ -78,7 +94,7 @@ CUDALAB_RENDER {
       color.z += glow * (.25f + .75f * (1 - hue));
     }
   }
-  float ground = expf(-fabsf(uv.y + .79f) * 90);
+  float ground = expf(-fabsf(uv.y + .79f) * 90) * (.7f + .3f * sinf(uv.x * 13 + orbit));
   color.x += ground * .08f;
   color.y += ground * .16f;
   color.z += ground * .22f;

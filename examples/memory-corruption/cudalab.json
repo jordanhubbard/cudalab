@@ -1,10 +1,10 @@
 {
   "name": "memory-corruption",
   "title": "Memory Corruption",
-  "description": "A remembered sunset is reorganized into luminous strata as entire thread blocks sort fragments of the image in parallel.",
+  "description": "A synthetic memory is repeatedly sorted into prismatic block mosaics, torn into RGB echoes, and briefly allowed to remember its original shape.",
   "category": "IMAGE ALCHEMY",
   "entry": "memory-corruption.cu",
-  "controls": "Move pointer to choose what the machine remembers",
+  "controls": "Move horizontally to corrupt memory · Move vertically to accelerate its rearrangement",
   "techniques": "CUB block radix sort · shared storage · parallel image processing",
   "state_bytes": 4194304,
   "work_items": 1048576

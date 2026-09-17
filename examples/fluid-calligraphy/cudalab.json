@@ -4,7 +4,7 @@
   "description": "Ink, smoke, and gold leaf write themselves through a continuously advected velocity field, with the pointer acting as a moving brush.",
   "category": "FLUID WORLDS",
   "entry": "fluid-calligraphy.cu",
-  "controls": "Move pointer to paint into the flow",
+  "controls": "Sweep pointer to throw ink · Hold click for a broad gold-loaded brush",
   "techniques": "semi-Lagrangian advection · persistent fields · bilinear sampling",
   "state_bytes": 8388608,
   "work_items": 262144

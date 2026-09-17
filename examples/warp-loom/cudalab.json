@@ -1,9 +1,9 @@
 {
   "name": "warp-loom",
   "title": "Warp Loom",
-  "description": "Thirty-two-thread choirs exchange their notes to weave one vast iridescent textile whose smallest unit is a CUDA warp.",
+  "description": "Thirty-two-thread choirs exchange notes across a rippling jacquard of silk, gold medallions, warp crossings, and luminous fringe.",
   "category": "PARALLEL POETICS",
   "entry": "warp-loom.cu",
-  "controls": "Move pointer to change the weave",
+  "controls": "Move pointer to conduct the threads and change the weave",
   "techniques": "warp shuffle · ballot · population count"
 }

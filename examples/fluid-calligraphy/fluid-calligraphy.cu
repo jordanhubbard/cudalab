@@ -47,11 +47,14 @@ CUDALAB_SIMULATE {
   adv.y = adv.y * .994f + cosf(angle) * .004f + curl * .002f;
   adv.z *= .997f;
   adv.w *= .994f;
-  float dx = x / N - params.mouse_x, dy = y / N - params.mouse_y, brush = expf(-(dx * dx + dy * dy) * 4800);
-  adv.x += -dy * brush * 3;
-  adv.y += dx * brush * 3;
-  adv.z = fminf(1.5f, adv.z + brush * .16f);
-  adv.w = fminf(1.0f, adv.w + brush * .055f);
+  float dx = x / (float)N - params.mouse_x, dy = y / (float)N - params.mouse_y;
+  float brush = expf(-(dx * dx + dy * dy) * (params.mouse_down ? 180.0f : 520.0f));
+  float gesture = fminf(3.0f, hypotf(params.mouse_dx, params.mouse_dy) * 90.0f);
+  float pressure = params.mouse_down ? 3.2f : 1.0f + gesture;
+  adv.x += (params.mouse_dx * 85.0f - dy * (2.5f + gesture)) * brush * pressure;
+  adv.y += (params.mouse_dy * 85.0f + dx * (2.5f + gesture)) * brush * pressure;
+  adv.z = fminf(2.5f, adv.z + brush * (.22f + gesture * .3f + params.mouse_down * .55f));
+  adv.w = fminf(1.5f, adv.w + brush * (.07f + gesture * .16f + params.mouse_down * .3f));
   dst[i] = adv;
 }
 CUDALAB_RENDER {

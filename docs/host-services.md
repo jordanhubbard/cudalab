@@ -74,6 +74,10 @@ It is instantiated once per compiled module. Each frame updates kernel parameter
 dimensions before replay, allowing resize, pointer input, time, and the mapped PBO address
 to change without rebuilding graph topology.
 
+Pointer input includes normalized position, per-frame `mouse_dx`/`mouse_dy`, and
+`mouse_down`. Gesture-driven pieces can therefore distinguish hovering, sweeping, and a
+pressed brush without private host code.
+
 Reset and simulation stay outside the graph on the simulation stream. This keeps one-time
 reset behavior explicit and makes the cross-stream dependency visible instead of relying on
 legacy default-stream ordering.

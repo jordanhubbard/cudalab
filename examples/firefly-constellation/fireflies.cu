@@ -63,8 +63,8 @@ CUDALAB_RENDER {
   int x = blockIdx.x * blockDim.x + threadIdx.x, y = blockIdx.y * blockDim.y + threadIdx.y;
   if (x >= params.width || y >= params.height)
     return;
-  auto* density = reinterpret_cast<unsigned*>(static_cast<Particle*>(state) + COUNT);
   int i = y * params.width + x;
+  auto* density = reinterpret_cast<unsigned*>(static_cast<Particle*>(state) + COUNT);
   unsigned d = density[i];
   density[i] = (unsigned)(d * .936f);
   float e = log2f(1 + d * .018f);
@@ -91,8 +91,9 @@ CUDALAB_COMPOSITE {
   auto* density = reinterpret_cast<unsigned*>(ps + COUNT);
   float3 p = make_float3(ps[i].p.x, ps[i].p.y, ps[i].p.z);
   float depth = 2.35f + p.z;
-  int x = (int)((p.x / depth * .72f + .5f) * params.width),
-      y = (int)((p.y / depth * .72f + .5f) * params.height);
+  float projection = 2.05f;
+  int x = (int)(params.width * .5f + p.x / depth * projection * params.height),
+      y = (int)(params.height * .5f + p.y / depth * projection * params.height);
   if (x > 1 && x < params.width - 2 && y > 1 && y < params.height - 2) {
     unsigned power = 5 + (mix(i + params.frame) & 15);
     atomicAdd(&density[y * params.width + x], power);

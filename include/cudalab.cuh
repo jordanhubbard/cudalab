@@ -17,6 +17,9 @@ struct CudalabParams {
   float mouse_y;
   int frame;
   int quality;
+  float mouse_dx = 0.0f;
+  float mouse_dy = 0.0f;
+  int mouse_down = 0;
 };
 
 struct CudalabResource {

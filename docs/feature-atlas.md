@@ -16,10 +16,12 @@ sonically, or interactively compelling *and* its source makes the CUDA idea legi
 | Tensor cores / WMMA | **Tensor Tapestry** | Retune a textile woven by matrix products | Shipped |
 | Warp collectives | **Warp Loom** | See 32-thread choirs exchange notes | Shipped |
 | Shared memory and barriers | **Shared Memory Rose** | Thread blocks assemble stained glass | Shipped |
-| CUB block algorithms | **Memory Corruption** | Sort a sunset into unstable memory | Shipped |
+| CUB block algorithms | **Memory Corruption** | Sort synthetic memory into prismatic instability | Shipped |
 | Temporal frame state | **Feedback Cathedral** | Pull recursive video light through space | Shipped |
 | GPU audio synthesis | **Spectral Orchard** | Hear and see one CUDA-authored score | Shipped |
 | CUDA graphs | **Choreograph** | A seekable, deterministic multi-part GPU performance | Shipped |
+| Iterative heightfields and buoyancy | **Ocean Procession** | Orbit a fleet pitching through a many-octave impossible sea | Shipped |
+| Deep volumetric integration | **Volumetric Tempest** | Enter a turbulent cathedral wrapped around living lightning | Shipped |
 | Streams, events, async allocation | **Confluence** | Independent visual and musical rivers meet without stalling | Next host-services wave |
 | `cuda::pipeline`, async copy, TMA | **Memory Weather** | Data arrival itself becomes wind and precipitation | Planned |
 | Cooperative groups and clusters | **City of Choirs** | Neighborhoods synchronize locally, then answer across a city | Planned |

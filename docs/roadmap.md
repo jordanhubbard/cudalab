@@ -21,6 +21,8 @@
 - [x] Deterministic timeline metadata, looping, and interactive seeking
 - [x] CUDA-aware syntax highlighting and source formatting
 - [x] **Choreograph**, a four-movement graph/timeline/named-resource production
+- [x] High-complexity ocean heightfield, animated buoyant fleet, and wakes
+- [x] Quality-scaled deep volumetric storm and procedural lightning
 - [ ] Save-as/new package, file tree, tabs, and dirty-close flow
 - [x] Reaction-diffusion, fluid, and particle pieces
 - [ ] Million-body gravity and particle-fluid pieces

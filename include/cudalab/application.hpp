@@ -54,6 +54,9 @@ private:
   float gpu_ms_ = 0.0f;
   float mouse_x_ = 0.0f;
   float mouse_y_ = 0.0f;
+  float mouse_dx_ = 0.0f;
+  float mouse_dy_ = 0.0f;
+  int mouse_down_ = 0;
   int frame_ = 0;
   int quality_ = 2;
   bool paused_ = false;
