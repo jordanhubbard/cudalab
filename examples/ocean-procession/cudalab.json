@@ -1,9 +1,9 @@
 {
   "name": "ocean-procession",
   "title": "Ocean Procession",
-  "description": "A fleet crosses a many-octave impossible sea: every hull bobs, pitches, rolls, and leaves a wake in a living field of reflected light.",
+  "description": "A fleet of fully modeled sailboats crosses a smooth many-octave sea, pitching and rolling through reflected sky, refracted light, caustics, foam, and wakes.",
   "category": "OCEAN & ATMOSPHERE",
   "entry": "ocean-procession.cu",
   "controls": "Move horizontally to orbit · Move vertically to dive and zoom",
-  "techniques": "multi-octave directional waves · iterative heightfield intersection · analytic buoyancy · dynamic fleet and wakes · Fresnel reflection"
+  "techniques": "differentiable directional waves · stable Newton intersection · analytic buoyancy · ray-traced sailboats · Fresnel reflection and refraction"
 }
