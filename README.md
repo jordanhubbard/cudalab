@@ -11,7 +11,7 @@ medium is native CUDA C++ rather than JavaScript.
 
 > **Status:** early, working studio. The live compiler, staged kernel lifecycle,
 > persistent device state, GPU audio, CUDA/OpenGL interop, package catalog, editor,
-> diagnostics, GPU timing, and first thirteen pieces are present. The roadmap deliberately
+> diagnostics, GPU timing, and first fourteen pieces are present. The roadmap deliberately
 > starts narrow and deep rather than shipping fifty mediocre demos.
 
 ## The first gallery
@@ -31,6 +31,7 @@ medium is native CUDA C++ rather than JavaScript.
 | **Memory Corruption** | CUB block radix sort used as a live image-making operation |
 | **Feedback Cathedral** | Persistent recursive framebuffer and temporal image warping |
 | **Spectral Orchard** | CUDA-synthesized stereo score and synchronized nocturnal world |
+| **Choreograph** | Seekable four-movement CUDA graph performance with named GPU memory |
 
 Every example is procedural, self-contained, live-editable, and runs through the same
 small staged ABI. A failed compile leaves the last good composition running.
@@ -120,8 +121,8 @@ and the repository's `.clang-format` file.
 6. **Scale up without hiding CUDA.** Helpers remove ceremony; they do not disguise execution, memory, or synchronization.
 
 See [Architecture](docs/architecture.md), [CUDA editor and formatting](docs/editor.md),
-[Demo standard](docs/demo-standard.md), [CUDA feature atlas](docs/feature-atlas.md),
-and [Roadmap](docs/roadmap.md).
+[Host Services v2](docs/host-services.md), [Demo standard](docs/demo-standard.md),
+[CUDA feature atlas](docs/feature-atlas.md), and [Roadmap](docs/roadmap.md).
 
 ## Build and test
 

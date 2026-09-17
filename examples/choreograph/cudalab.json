@@ -1,0 +1,18 @@
+{
+  "name": "choreograph",
+  "title": "Choreograph",
+  "description": "A seekable four-movement GPU performance conducts light, memory, architecture, and stereo sound through a replayed CUDA graph.",
+  "category": "GPU PERFORMANCE",
+  "entry": "choreograph.cu",
+  "controls": "Move pointer to conduct · Drag timeline to seek · Audio toggle in preview",
+  "techniques": "CUDA graph replay · named buffers and surfaces · multi-stream audiovisual score",
+  "work_items": 4096,
+  "graph": true,
+  "timeline_seconds": 32.0,
+  "bpm": 112.0,
+  "resources": [
+    {"name": "score", "kind": "buffer", "bytes": 65536},
+    {"name": "memory-a", "kind": "surface2d", "width": 1024, "height": 1024},
+    {"name": "memory-b", "kind": "surface2d", "width": 1024, "height": 1024}
+  ]
+}

@@ -43,10 +43,11 @@ transactional: Cudalab loads a candidate module completely before unloading the 
 one, so broken edits keep the last successful visual running.
 
 The ABI is intentionally small. `render` is required; `reset`, `simulate`, `composite`,
-and `audio` are optional. Manifests declare persistent state size and logical work-item
-count. Memory comes from the stream-ordered allocator, survives between frames, and resets
-transactionally after a successful source recompile. The next host-service revision adds named buffers,
-multiple streams, CUDA graphs, texture/surface objects, camera frames, and library handles.
+and `audio` are optional. Manifests declare persistent state size, logical work-item
+count, named resources, graph replay, and optional timeline metadata. Memory comes from
+the stream-ordered allocator and survives between frames. Named 2D resources expose both
+texture and surface objects. See [Host Services v2](host-services.md) for the manifest and
+device-facing contracts.
 
 ```text
 reset (once after load/recompile)
@@ -66,7 +67,8 @@ Cudalab should make modern features available without making every demo architec
 specific:
 
 1. **Portable:** grids, shared memory, warp intrinsics, cooperative groups, CUB/Thrust.
-2. **Pipeline:** async memory pools, streams/events, CUDA graphs, graph conditionals.
+2. **Pipeline:** async memory pools, three streams/events, and CUDA graph replay ship today;
+   graph conditionals remain planned.
 3. **Interop:** OpenGL today; Vulkan external memory/semaphores next; D3D12 on Windows.
 4. **Architecture family:** family-specific targets such as `compute_120f` when a demo opts in.
 5. **Architecture specific:** tensor memory accelerator, tensor cores, cluster launch,

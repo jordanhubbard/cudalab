@@ -19,7 +19,7 @@ sonically, or interactively compelling *and* its source makes the CUDA idea legi
 | CUB block algorithms | **Memory Corruption** | Sort a sunset into unstable memory | Shipped |
 | Temporal frame state | **Feedback Cathedral** | Pull recursive video light through space | Shipped |
 | GPU audio synthesis | **Spectral Orchard** | Hear and see one CUDA-authored score | Shipped |
-| CUDA graphs | **Choreograph** | A seekable, deterministic multi-part GPU performance | Next host-services wave |
+| CUDA graphs | **Choreograph** | A seekable, deterministic multi-part GPU performance | Shipped |
 | Streams, events, async allocation | **Confluence** | Independent visual and musical rivers meet without stalling | Next host-services wave |
 | `cuda::pipeline`, async copy, TMA | **Memory Weather** | Data arrival itself becomes wind and precipitation | Planned |
 | Cooperative groups and clusters | **City of Choirs** | Neighborhoods synchronize locally, then answer across a city | Planned |

@@ -1,9 +1,13 @@
 #pragma once
 
 #include <cuda_runtime.h>
+#if !defined(__CUDACC_RTC__)
+#include <cmath>
+#endif
 
 // Stable live-kernel ABI. A piece must export render and may export reset,
-// simulate, and composite. Stages execute in that order on one CUDA stream.
+// simulate, composite, and audio. Host services pass manifest-declared resources
+// through a compact device table; source using these macros remains compatible.
 struct CudalabParams {
   int width;
   int height;
@@ -15,16 +19,46 @@ struct CudalabParams {
   int quality;
 };
 
+struct CudalabResource {
+  void* data;
+  unsigned long long bytes;
+  cudaTextureObject_t texture;
+  cudaSurfaceObject_t surface;
+  int width;
+  int height;
+};
+
+template <typename T>
+__device__ inline T* cudalab_buffer(const CudalabResource* resources, int resource_count, int slot) {
+  return resources && slot >= 0 && slot < resource_count ? static_cast<T*>(resources[slot].data) : nullptr;
+}
+
 #define CUDALAB_RENDER                                                                                       \
-  extern "C" __global__ void render(                                                                         \
-      uchar4* pixels, void* state, unsigned long long state_bytes, CudalabParams params)
+  extern "C" __global__ void render(uchar4* pixels,                                                          \
+                                    void* state,                                                             \
+                                    unsigned long long state_bytes,                                          \
+                                    CudalabParams params,                                                    \
+                                    const CudalabResource* resources,                                        \
+                                    int resource_count)
 #define CUDALAB_RESET                                                                                        \
-  extern "C" __global__ void reset(void* state, unsigned long long state_bytes, CudalabParams params)
+  extern "C" __global__ void reset(void* state,                                                              \
+                                   unsigned long long state_bytes,                                           \
+                                   CudalabParams params,                                                     \
+                                   const CudalabResource* resources,                                         \
+                                   int resource_count)
 #define CUDALAB_SIMULATE                                                                                     \
-  extern "C" __global__ void simulate(void* state, unsigned long long state_bytes, CudalabParams params)
+  extern "C" __global__ void simulate(void* state,                                                           \
+                                      unsigned long long state_bytes,                                        \
+                                      CudalabParams params,                                                  \
+                                      const CudalabResource* resources,                                      \
+                                      int resource_count)
 #define CUDALAB_COMPOSITE                                                                                    \
-  extern "C" __global__ void composite(                                                                      \
-      uchar4* pixels, void* state, unsigned long long state_bytes, CudalabParams params)
+  extern "C" __global__ void composite(uchar4* pixels,                                                       \
+                                       void* state,                                                          \
+                                       unsigned long long state_bytes,                                       \
+                                       CudalabParams params,                                                 \
+                                       const CudalabResource* resources,                                     \
+                                       int resource_count)
 #define CUDALAB_AUDIO                                                                                        \
   extern "C" __global__ void audio(float2* samples,                                                          \
                                    void* state,                                                              \
@@ -32,7 +66,9 @@ struct CudalabParams {
                                    CudalabParams params,                                                     \
                                    unsigned long long sample_offset,                                         \
                                    int sample_count,                                                         \
-                                   int sample_rate)
+                                   int sample_rate,                                                          \
+                                   const CudalabResource* resources,                                         \
+                                   int resource_count)
 #define CUDALAB_KERNEL CUDALAB_RENDER
 
 __device__ inline float cudalab_saturate(float x) {

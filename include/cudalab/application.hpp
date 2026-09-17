@@ -16,13 +16,14 @@ class TextEditor;
 namespace cudalab {
 
 class Application {
- public:
+public:
   explicit Application(bool hidden = false);
   ~Application();
   int run();
   int smoke_test();
+  int snapshot(const std::string& demo_name, float time, const std::filesystem::path& output_path);
 
- private:
+private:
   void draw_dockspace();
   void draw_catalog();
   void draw_editor();
@@ -62,4 +63,4 @@ class Application {
   bool audio_enabled_ = true;
 };
 
-}  // namespace cudalab
+} // namespace cudalab

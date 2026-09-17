@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -31,14 +32,16 @@ namespace {
 
 std::string read_file(const std::filesystem::path& path) {
   std::ifstream input(path, std::ios::binary);
-  if (!input) throw std::runtime_error("Cannot read " + path.string());
+  if (!input)
+    throw std::runtime_error("Cannot read " + path.string());
   std::ostringstream output;
   output << input.rdbuf();
   return output.str();
 }
 
 std::string lower(std::string value) {
-  std::ranges::transform(value, value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  std::ranges::transform(
+      value, value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
   return value;
 }
 
@@ -46,22 +49,67 @@ const TextEditor::Language* cuda_language() {
   static const TextEditor::Language language = [] {
     auto result = *TextEditor::Language::Cpp();
     result.name = "CUDA C++";
-    result.keywords.insert({
-      "__device__", "__global__", "__host__", "__shared__", "__constant__", "__managed__",
-      "__restrict__", "__launch_bounds__", "__grid_constant__", "__forceinline__", "__noinline__",
-      "__syncthreads", "__syncwarp", "__threadfence", "__threadfence_block", "__threadfence_system"
-    });
-    result.declarations.insert({
-      "dim3", "cudaStream_t", "cudaEvent_t", "cudaTextureObject_t", "cudaSurfaceObject_t",
-      "half", "half2", "nv_bfloat16", "float2", "float3", "float4", "double2", "int2", "int3",
-      "int4", "uint2", "uint3", "uint4", "uchar4", "CudalabParams"
-    });
-    result.identifiers.insert({
-      "threadIdx", "blockIdx", "blockDim", "gridDim", "warpSize", "clock64", "atomicAdd", "atomicCAS",
-      "__shfl_sync", "__shfl_down_sync", "__ballot_sync", "__activemask", "cooperative_groups", "cub",
-      "thrust", "wmma", "CUDALAB_RENDER", "CUDALAB_SIMULATE", "CUDALAB_RESET", "CUDALAB_COMPOSITE",
-      "CUDALAB_AUDIO"
-    });
+    result.keywords.insert({"__device__",
+                            "__global__",
+                            "__host__",
+                            "__shared__",
+                            "__constant__",
+                            "__managed__",
+                            "__restrict__",
+                            "__launch_bounds__",
+                            "__grid_constant__",
+                            "__forceinline__",
+                            "__noinline__",
+                            "__syncthreads",
+                            "__syncwarp",
+                            "__threadfence",
+                            "__threadfence_block",
+                            "__threadfence_system"});
+    result.declarations.insert({"dim3",
+                                "cudaStream_t",
+                                "cudaEvent_t",
+                                "cudaTextureObject_t",
+                                "cudaSurfaceObject_t",
+                                "half",
+                                "half2",
+                                "nv_bfloat16",
+                                "float2",
+                                "float3",
+                                "float4",
+                                "double2",
+                                "int2",
+                                "int3",
+                                "int4",
+                                "uint2",
+                                "uint3",
+                                "uint4",
+                                "uchar4",
+                                "CudalabParams",
+                                "CudalabResource"});
+    result.identifiers.insert({"threadIdx",
+                               "blockIdx",
+                               "blockDim",
+                               "gridDim",
+                               "warpSize",
+                               "clock64",
+                               "atomicAdd",
+                               "atomicCAS",
+                               "__shfl_sync",
+                               "__shfl_down_sync",
+                               "__ballot_sync",
+                               "__activemask",
+                               "cooperative_groups",
+                               "cub",
+                               "thrust",
+                               "wmma",
+                               "CUDALAB_RENDER",
+                               "CUDALAB_SIMULATE",
+                               "CUDALAB_RESET",
+                               "CUDALAB_COMPOSITE",
+                               "CUDALAB_AUDIO",
+                               "cudalab_buffer",
+                               "tex2D",
+                               "surf2Dwrite"});
     return result;
   }();
   return &language;
@@ -70,16 +118,18 @@ const TextEditor::Language* cuda_language() {
 int run_clang_format(const std::filesystem::path& path) {
   const auto filename = path.string();
 #if defined(_WIN32)
-  return static_cast<int>(_spawnlp(_P_WAIT, "clang-format", "clang-format", "-i", "--style=file",
-                                   filename.c_str(), nullptr));
+  return static_cast<int>(
+      _spawnlp(_P_WAIT, "clang-format", "clang-format", "-i", "--style=file", filename.c_str(), nullptr));
 #else
   const char* arguments[] = {"clang-format", "-i", "--style=file", filename.c_str(), nullptr};
   pid_t process = 0;
-  const int spawn_result = posix_spawnp(&process, "clang-format", nullptr, nullptr,
-                                        const_cast<char* const*>(arguments), environ);
-  if (spawn_result != 0) return spawn_result;
+  const int spawn_result =
+      posix_spawnp(&process, "clang-format", nullptr, nullptr, const_cast<char* const*>(arguments), environ);
+  if (spawn_result != 0)
+    return spawn_result;
   int status = 0;
-  if (waitpid(process, &status, 0) < 0 || !WIFEXITED(status)) return -1;
+  if (waitpid(process, &status, 0) < 0 || !WIFEXITED(status))
+    return -1;
   return WEXITSTATUS(status);
 #endif
 }
@@ -112,25 +162,30 @@ void set_studio_theme() {
   c[ImGuiCol_DockingPreview] = ImVec4(.30f, .56f, 1, .72f);
 }
 
-}  // namespace
+} // namespace
 
 Application::Application(bool hidden) : catalog_(DemoCatalog::scan(find_examples())) {
 #if defined(__linux__)
   // NVIDIA CUDA/OpenGL interop currently requires the GLX path on Wayland desktops.
   // Respect an explicit user choice; otherwise prefer X11 and retain Wayland fallback.
-  if (!std::getenv("SDL_VIDEO_DRIVER")) SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11,wayland");
+  if (!std::getenv("SDL_VIDEO_DRIVER"))
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11,wayland");
 #endif
-  if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS)) throw std::runtime_error(SDL_GetError());
+  if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS))
+    throw std::runtime_error(SDL_GetError());
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   SDL_WindowFlags window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-  if (hidden) window_flags |= SDL_WINDOW_HIDDEN;
+  if (hidden)
+    window_flags |= SDL_WINDOW_HIDDEN;
   window_ = SDL_CreateWindow("Cudalab — CUDA Creative Studio", 1600, 960, window_flags);
-  if (!window_) throw std::runtime_error(SDL_GetError());
+  if (!window_)
+    throw std::runtime_error(SDL_GetError());
   gl_context_ = SDL_GL_CreateContext(window_);
-  if (!gl_context_) throw std::runtime_error(SDL_GetError());
+  if (!gl_context_)
+    throw std::runtime_error(SDL_GetError());
   SDL_GL_MakeCurrent(window_, gl_context_);
   SDL_GL_SetSwapInterval(1);
 
@@ -157,20 +212,26 @@ Application::Application(bool hidden) : catalog_(DemoCatalog::scan(find_examples
   cuda_ = std::make_unique<CudaRuntime>();
   SDL_AudioSpec audio_spec{SDL_AUDIO_F32, 2, 48000};
   audio_stream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audio_spec, nullptr, nullptr);
-  if (audio_stream_) SDL_ResumeAudioStreamDevice(audio_stream_);
-  if (!catalog_.demos().empty()) load_demo(0);
-  for (const auto& error : catalog_.errors()) output_ += "[catalog] " + error + "\n";
+  if (audio_stream_)
+    SDL_ResumeAudioStreamDevice(audio_stream_);
+  if (!catalog_.demos().empty())
+    load_demo(0);
+  for (const auto& error : catalog_.errors())
+    output_ += "[catalog] " + error + "\n";
 }
 
 Application::~Application() {
   cuda_.reset();
-  if (audio_stream_) SDL_DestroyAudioStream(audio_stream_);
+  if (audio_stream_)
+    SDL_DestroyAudioStream(audio_stream_);
   editor_.reset();
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();
-  if (gl_context_) SDL_GL_DestroyContext(gl_context_);
-  if (window_) SDL_DestroyWindow(window_);
+  if (gl_context_)
+    SDL_GL_DestroyContext(gl_context_);
+  if (window_)
+    SDL_DestroyWindow(window_);
   SDL_Quit();
 }
 
@@ -179,7 +240,8 @@ int Application::run() {
   while (running_) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-      if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) running_ = false;
+      if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
+        running_ = false;
       bool shortcut_handled = false;
       if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
         const bool command = (event.key.mod & SDL_KMOD_CTRL) != 0;
@@ -198,12 +260,23 @@ int Application::run() {
           shortcut_handled = true;
         }
       }
-      if (!shortcut_handled) ImGui_ImplSDL3_ProcessEvent(&event);
+      if (!shortcut_handled)
+        ImGui_ImplSDL3_ProcessEvent(&event);
     }
     const auto now = std::chrono::steady_clock::now();
     delta_ = std::min(.1f, std::chrono::duration<float>(now - previous).count());
     previous = now;
-    if (!paused_) elapsed_ += delta_;
+    if (!paused_) {
+      elapsed_ += delta_;
+      if (!catalog_.demos().empty()) {
+        const float duration = catalog_.demos()[selected_].timeline_seconds;
+        if (duration > 0.0f && elapsed_ >= duration) {
+          elapsed_ = std::fmod(elapsed_, duration);
+          frame_ = static_cast<int>(elapsed_ * 60.0f);
+          cuda_->reset();
+        }
+      }
+    }
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
@@ -213,8 +286,12 @@ int Application::run() {
     draw_editor();
     draw_preview();
     draw_output();
-    if (audio_enabled_ && audio_stream_ && cuda_->has_audio() && SDL_GetAudioStreamQueued(audio_stream_) < 4096 * 8) {
-      FrameParams audio_params{0, 0, elapsed_, delta_, mouse_x_, mouse_y_, frame_, quality_};
+    if (audio_enabled_ && audio_stream_ && cuda_->has_audio() &&
+        SDL_GetAudioStreamQueued(audio_stream_) < 4096 * 8) {
+      const int authored_frame = !catalog_.demos().empty() && catalog_.demos()[selected_].timeline_seconds > 0
+                                     ? static_cast<int>(elapsed_ * 60.0f)
+                                     : frame_;
+      FrameParams audio_params{0, 0, elapsed_, delta_, mouse_x_, mouse_y_, authored_frame, quality_};
       const auto& audio = cuda_->synthesize_audio(audio_params);
       SDL_PutAudioStreamData(audio_stream_, audio.data(), static_cast<int>(audio.size() * sizeof(float2)));
     }
@@ -229,7 +306,8 @@ int Application::run() {
     SDL_GL_SwapWindow(window_);
     ++frame_;
   }
-  if (source_ != saved_source_) save();
+  if (source_ != saved_source_)
+    save();
   return 0;
 }
 
@@ -238,7 +316,10 @@ int Application::smoke_test() {
   cuda_->resize(640, 360);
   for (std::size_t i = 0; i < catalog_.demos().size(); ++i) {
     load_demo(i);
-    if (!last_compile_ok_) { ++failures; continue; }
+    if (!last_compile_ok_) {
+      ++failures;
+      continue;
+    }
     try {
       for (int f = 0; f < 3; ++f) {
         FrameParams params{640, 360, f / 60.0f, 1 / 60.0f, .5f, .5f, f, 2};
@@ -246,7 +327,8 @@ int Application::smoke_test() {
       }
       if (cuda_->has_audio()) {
         FrameParams params{0, 0, 0, 1 / 60.0f, .5f, .5f, 0, 2};
-        if (cuda_->synthesize_audio(params).size() != 1024) throw std::runtime_error("audio kernel returned wrong frame count");
+        if (cuda_->synthesize_audio(params).size() != 1024)
+          throw std::runtime_error("audio kernel returned wrong frame count");
       }
       SDL_Log("[smoke] %s rendered successfully", catalog_.demos()[i].name.c_str());
     } catch (const std::exception& error) {
@@ -257,14 +339,52 @@ int Application::smoke_test() {
   return failures == 0 ? 0 : 1;
 }
 
+int Application::snapshot(const std::string& demo_name,
+                          float time,
+                          const std::filesystem::path& output_path) {
+  const auto match = std::ranges::find_if(
+      catalog_.demos(), [&](const Demo& demo) { return demo.name == demo_name || demo.title == demo_name; });
+  if (match == catalog_.demos().end()) {
+    throw std::runtime_error("Unknown demo for snapshot: " + demo_name);
+  }
+  load_demo(static_cast<std::size_t>(std::distance(catalog_.demos().begin(), match)));
+  if (!last_compile_ok_)
+    return 1;
+
+  constexpr int width = 960;
+  constexpr int height = 540;
+  constexpr float step = 1.0f / 60.0f;
+  cuda_->resize(width, height);
+  const float start = std::max(0.0f, time - 2.0f);
+  int frame = static_cast<int>(start * 60.0f);
+  for (float t = start; t <= time + step * .5f; t += step, ++frame) {
+    FrameParams params{width, height, t, step, .58f, .43f, frame, 2};
+    cuda_->render(params);
+  }
+
+  std::vector<unsigned char> rgba(static_cast<std::size_t>(width) * height * 4);
+  glBindTexture(GL_TEXTURE_2D, cuda_->texture());
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+  std::ofstream output(output_path, std::ios::binary | std::ios::trunc);
+  if (!output)
+    throw std::runtime_error("Cannot write snapshot " + output_path.string());
+  output << "P6\n" << width << ' ' << height << "\n255\n";
+  for (std::size_t i = 0; i < static_cast<std::size_t>(width) * height; ++i) {
+    output.write(reinterpret_cast<const char*>(rgba.data() + i * 4), 3);
+  }
+  SDL_Log("[snapshot] %s at %.2f seconds -> %s", demo_name.c_str(), time, output_path.string().c_str());
+  return 0;
+}
+
 void Application::draw_dockspace() {
   const auto* viewport = ImGui::GetMainViewport();
   ImGui::SetNextWindowPos(viewport->WorkPos);
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::SetNextWindowViewport(viewport->ID);
   constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
-    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-    ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_MenuBar;
+                                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+                                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                                     ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_MenuBar;
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -272,26 +392,34 @@ void Application::draw_dockspace() {
   ImGui::PopStyleVar(3);
   if (ImGui::BeginMenuBar()) {
     if (ImGui::BeginMenu("File")) {
-      if (ImGui::MenuItem("Save", "Ctrl+S")) save();
-      if (ImGui::MenuItem("Format CUDA source", "Ctrl+Alt+F")) format();
-      if (ImGui::MenuItem("Exit")) running_ = false;
+      if (ImGui::MenuItem("Save", "Ctrl+S"))
+        save();
+      if (ImGui::MenuItem("Format CUDA source", "Ctrl+Alt+F"))
+        format();
+      if (ImGui::MenuItem("Exit"))
+        running_ = false;
       ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Run")) {
-      if (ImGui::MenuItem("Compile and run", "Ctrl+Enter / F5")) compile();
-      if (ImGui::MenuItem(paused_ ? "Resume" : "Pause", "Space")) paused_ = !paused_;
+      if (ImGui::MenuItem("Compile and run", "Ctrl+Enter / F5"))
+        compile();
+      if (ImGui::MenuItem(paused_ ? "Resume" : "Pause", "Space"))
+        paused_ = !paused_;
       ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("View")) {
-      if (ImGui::MenuItem("Reset layout")) reset_layout();
+      if (ImGui::MenuItem("Reset layout"))
+        reset_layout();
       ImGui::EndMenu();
     }
     ImGui::Separator();
     ImGui::TextColored(ImVec4(.35f, .62f, 1, 1), "CUDA//LAB");
     ImGui::Separator();
     ImGui::TextDisabled("%s  |  sm_%d%d  |  %.1f GB",
-      cuda_->device().name.c_str(), cuda_->device().compute_major, cuda_->device().compute_minor,
-      cuda_->device().memory_bytes / 1073741824.0);
+                        cuda_->device().name.c_str(),
+                        cuda_->device().compute_major,
+                        cuda_->device().compute_minor,
+                        cuda_->device().memory_bytes / 1073741824.0);
     ImGui::EndMenuBar();
   }
   const ImGuiID dock_id = ImGui::GetID("CudalabDock");
@@ -319,16 +447,30 @@ void Application::draw_catalog() {
   char filter[128]{};
   std::strncpy(filter, filter_.c_str(), sizeof(filter) - 1);
   ImGui::SetNextItemWidth(-1);
-  if (ImGui::InputTextWithHint("##filter", "Find a demo...", filter, sizeof(filter))) filter_ = filter;
+  if (ImGui::InputTextWithHint("##filter", "Find a demo...", filter, sizeof(filter)))
+    filter_ = filter;
   ImGui::SeparatorText("BEST OF CUDA");
   const auto needle = lower(filter_);
   for (std::size_t i = 0; i < catalog_.demos().size(); ++i) {
     const auto& demo = catalog_.demos()[i];
-    if (!needle.empty() && lower(demo.title + demo.description + demo.category).find(needle) == std::string::npos) continue;
+    if (!needle.empty() &&
+        lower(demo.title + demo.description + demo.category).find(needle) == std::string::npos)
+      continue;
     ImGui::PushID(static_cast<int>(i));
-    if (ImGui::Selectable(demo.title.c_str(), selected_ == i, ImGuiSelectableFlags_AllowDoubleClick)) load_demo(i);
+    if (ImGui::Selectable(demo.title.c_str(), selected_ == i, ImGuiSelectableFlags_AllowDoubleClick))
+      load_demo(i);
     ImGui::TextDisabled("%s", demo.category.c_str());
-    if (!demo.techniques.empty()) ImGui::TextColored(ImVec4(.35f, .62f, 1, 1), "%s", demo.techniques.c_str());
+    if (!demo.techniques.empty())
+      ImGui::TextColored(ImVec4(.35f, .62f, 1, 1), "%s", demo.techniques.c_str());
+    if (demo.use_graph || !demo.resources.empty() || demo.timeline_seconds > 0) {
+      ImGui::TextColored(ImVec4(.78f, .48f, 1, 1),
+                         "%s%s%s",
+                         demo.use_graph ? "CUDA GRAPH" : "",
+                         demo.use_graph && !demo.resources.empty() ? " · " : "",
+                         !demo.resources.empty()
+                             ? (std::to_string(demo.resources.size()) + " NAMED RESOURCES").c_str()
+                             : "");
+    }
     ImGui::PushTextWrapPos();
     ImGui::TextColored(ImVec4(.52f, .62f, .76f, 1), "%s", demo.description.c_str());
     ImGui::PopTextWrapPos();
@@ -341,11 +483,14 @@ void Application::draw_catalog() {
 void Application::draw_editor() {
   ImGui::Begin("Kernel");
   const bool dirty = source_ != saved_source_;
-  if (ImGui::Button("Run  Ctrl+Enter")) compile();
+  if (ImGui::Button("Run  Ctrl+Enter"))
+    compile();
   ImGui::SameLine();
-  if (ImGui::Button("Save  Ctrl+S")) save();
+  if (ImGui::Button("Save  Ctrl+S"))
+    save();
   ImGui::SameLine();
-  if (ImGui::Button("Format  Ctrl+Alt+F")) format();
+  if (ImGui::Button("Format  Ctrl+Alt+F"))
+    format();
   ImGui::SameLine();
   ImGui::TextColored(dirty ? ImVec4(1, .74f, .25f, 1) : ImVec4(.3f, .85f, .6f, 1),
                      dirty ? "modified" : "saved");
@@ -372,14 +517,36 @@ void Application::draw_preview() {
   ImGui::SameLine();
   if (ImGui::SmallButton(audio_enabled_ ? "Audio: on" : "Audio: muted")) {
     audio_enabled_ = !audio_enabled_;
-    if (!audio_enabled_ && audio_stream_) SDL_ClearAudioStream(audio_stream_);
+    if (!audio_enabled_ && audio_stream_)
+      SDL_ClearAudioStream(audio_stream_);
+  }
+  if (!catalog_.demos().empty() && catalog_.demos()[selected_].timeline_seconds > 0.0f) {
+    const auto& demo = catalog_.demos()[selected_];
+    if (ImGui::SmallButton(paused_ ? "Play" : "Pause"))
+      paused_ = !paused_;
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(-90.0f);
+    float playhead = elapsed_;
+    if (ImGui::SliderFloat("##timeline", &playhead, 0.0f, demo.timeline_seconds, "%.2f s")) {
+      elapsed_ = playhead;
+      frame_ = static_cast<int>(elapsed_ * 60.0f);
+      cuda_->reset();
+      if (audio_stream_)
+        SDL_ClearAudioStream(audio_stream_);
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("%.1f BPM", demo.bpm);
   }
   const ImVec2 area = ImGui::GetContentRegionAvail();
   const int width = std::max(64, static_cast<int>(area.x));
   const int height = std::max(64, static_cast<int>(area.y));
   cuda_->resize(width, height);
-  FrameParams params{width, height, elapsed_, delta_, mouse_x_, mouse_y_, frame_, quality_};
-  if (!paused_ && cuda_->ready()) gpu_ms_ = cuda_->render(params);
+  const int authored_frame = !catalog_.demos().empty() && catalog_.demos()[selected_].timeline_seconds > 0
+                                 ? static_cast<int>(elapsed_ * 60.0f)
+                                 : frame_;
+  FrameParams params{width, height, elapsed_, delta_, mouse_x_, mouse_y_, authored_frame, quality_};
+  if (!paused_ && cuda_->ready())
+    gpu_ms_ = cuda_->render(params);
   const ImVec2 top_left = ImGui::GetCursorScreenPos();
   ImGui::Image(static_cast<ImTextureID>(cuda_->texture()), area, {0, 1}, {1, 0});
   if (ImGui::IsItemHovered()) {
@@ -392,12 +559,18 @@ void Application::draw_preview() {
 
 void Application::draw_output() {
   ImGui::Begin("Output");
-  if (ImGui::Button("Clear")) output_.clear();
+  if (ImGui::Button("Clear"))
+    output_.clear();
   ImGui::SameLine();
   const auto& d = cuda_->device();
-  ImGui::TextDisabled("driver %d.%d  runtime %d.%d  %d SMs",
-    d.driver_version / 1000, (d.driver_version % 1000) / 10,
-    d.runtime_version / 1000, (d.runtime_version % 1000) / 10, d.multiprocessors);
+  ImGui::TextDisabled("driver %d.%d  runtime %d.%d  %d SMs  |  3 streams  |  %zu resources%s",
+                      d.driver_version / 1000,
+                      (d.driver_version % 1000) / 10,
+                      d.runtime_version / 1000,
+                      (d.runtime_version % 1000) / 10,
+                      d.multiprocessors,
+                      cuda_->resource_count(),
+                      cuda_->graph_enabled() ? "  |  graph replay" : "");
   ImGui::Separator();
   ImGui::BeginChild("log");
   ImGui::PushTextWrapPos();
@@ -408,12 +581,18 @@ void Application::draw_output() {
 }
 
 void Application::load_demo(std::size_t index) {
-  if (index >= catalog_.demos().size()) return;
-  if (source_ != saved_source_) save();
+  if (index >= catalog_.demos().size())
+    return;
+  if (source_ != saved_source_)
+    save();
   selected_ = index;
-  if (audio_stream_) SDL_ClearAudioStream(audio_stream_);
+  if (audio_stream_)
+    SDL_ClearAudioStream(audio_stream_);
   source_path_ = catalog_.demos()[index].directory / catalog_.demos()[index].entry;
-  cuda_->configure(catalog_.demos()[index].state_bytes, catalog_.demos()[index].work_items);
+  cuda_->configure(catalog_.demos()[index].state_bytes,
+                   catalog_.demos()[index].work_items,
+                   catalog_.demos()[index].resources,
+                   catalog_.demos()[index].use_graph);
   source_ = saved_source_ = read_file(source_path_);
   editor_->SetText(source_);
   editor_->ClearMarkers();
@@ -423,37 +602,47 @@ void Application::load_demo(std::size_t index) {
 }
 
 void Application::compile() {
-  if (source_path_.empty()) return;
+  if (source_path_.empty())
+    return;
   source_ = editor_->GetText();
   const auto result = cuda_->compile(source_, source_path_);
   update_diagnostic_markers(result.log);
   std::ostringstream message;
-  message << (result.ok ? "[ok] " : "[error] ") << source_path_.filename().string()
-          << " — " << std::fixed << std::setprecision(1) << result.milliseconds << " ms\n"
+  message << (result.ok ? "[ok] " : "[error] ") << source_path_.filename().string() << " — " << std::fixed
+          << std::setprecision(1) << result.milliseconds << " ms\n"
           << result.log << "\n\n";
   SDL_Log("%s", message.str().c_str());
   output_ = message.str() + output_;
   last_compile_ok_ = result.ok;
   std::ostringstream title;
-  title << "Cudalab — " << (catalog_.demos().empty() ? source_path_.filename().string() : catalog_.demos()[selected_].title)
-        << " — " << (result.ok ? "live" : "compile error") << " — "
-        << std::fixed << std::setprecision(1) << result.milliseconds << " ms";
+  title << "Cudalab — "
+        << (catalog_.demos().empty() ? source_path_.filename().string() : catalog_.demos()[selected_].title)
+        << " — " << (result.ok ? "live" : "compile error") << " — " << std::fixed << std::setprecision(1)
+        << result.milliseconds << " ms";
   SDL_SetWindowTitle(window_, title.str().c_str());
-  if (result.ok) { elapsed_ = 0; frame_ = 0; }
+  if (result.ok) {
+    elapsed_ = 0;
+    frame_ = 0;
+  }
 }
 
 void Application::save() {
-  if (source_path_.empty()) return;
+  if (source_path_.empty())
+    return;
   source_ = editor_->GetText();
   std::ofstream output(source_path_, std::ios::binary | std::ios::trunc);
-  if (!output) { output_ = "[error] Cannot save " + source_path_.string() + "\n" + output_; return; }
+  if (!output) {
+    output_ = "[error] Cannot save " + source_path_.string() + "\n" + output_;
+    return;
+  }
   output << source_;
   saved_source_ = source_;
   output_ = "[saved] " + source_path_.string() + "\n" + output_;
 }
 
 void Application::format() {
-  if (source_path_.empty()) return;
+  if (source_path_.empty())
+    return;
   source_ = editor_->GetText();
   {
     std::ofstream file(source_path_, std::ios::binary | std::ios::trunc);
@@ -484,13 +673,15 @@ void Application::update_diagnostic_markers(const std::string& log) {
   int first_error = -1;
   while (std::getline(lines, line)) {
     std::smatch match;
-    if (!std::regex_search(line, match, location)) continue;
+    if (!std::regex_search(line, match, location))
+      continue;
     const int line_number = std::stoi(match[1].str()) - 1;
     const bool warning = line.find("warning") != std::string::npos;
     const ImU32 gutter = warning ? IM_COL32(236, 177, 65, 210) : IM_COL32(245, 78, 107, 220);
     const ImU32 background = warning ? IM_COL32(130, 92, 20, 50) : IM_COL32(145, 30, 55, 60);
     editor_->AddMarker(line_number, gutter, background, line, line);
-    if (!warning && first_error < 0) first_error = line_number;
+    if (!warning && first_error < 0)
+      first_error = line_number;
   }
   if (first_error >= 0) {
     editor_->SetCursor(first_error, 0);
@@ -498,15 +689,17 @@ void Application::update_diagnostic_markers(const std::string& log) {
   }
 }
 
-void Application::reset_layout() { first_layout_ = true; }
+void Application::reset_layout() {
+  first_layout_ = true;
+}
 
 std::filesystem::path Application::find_examples() {
   const std::vector<std::filesystem::path> candidates = {
-    std::filesystem::path(CUDALAB_SOURCE_ROOT) / "examples",
-    std::filesystem::current_path() / "examples"
-  };
-  for (const auto& path : candidates) if (std::filesystem::is_directory(path)) return path;
+      std::filesystem::path(CUDALAB_SOURCE_ROOT) / "examples", std::filesystem::current_path() / "examples"};
+  for (const auto& path : candidates)
+    if (std::filesystem::is_directory(path))
+      return path;
   return candidates.front();
 }
 
-}  // namespace cudalab
+} // namespace cudalab
