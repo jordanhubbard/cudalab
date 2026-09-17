@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: Jimver/cuda-toolkit@v0.2.27
+      - uses: Jimver/cuda-toolkit@v0.2.36
         with:
-          cuda: '13.0.2'
+          cuda: '13.2.0'
           method: network
           sub-packages: '["nvcc", "nvrtc", "cudart", "cccl"]'
       - name: Dependencies
