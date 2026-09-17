@@ -127,7 +127,7 @@ CUDALAB_RENDER {
   float3 target = make_float3(0.0f, .05f, 0.0f);
   float3 forward = ocean_norm(ocean_sub(target, ro));
   float3 right = ocean_norm(make_float3(forward.z, 0.0f, -forward.x));
-  float3 up = ocean_cross(right, forward);
+  float3 up = ocean_cross(forward, right);
   float3 ray = ocean_norm(
       ocean_add(forward, ocean_add(ocean_mul(right, screen.x * .72f), ocean_mul(up, screen.y * .72f))));
 
