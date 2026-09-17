@@ -286,7 +286,7 @@ int Application::run() {
     draw_editor();
     draw_preview();
     draw_output();
-    if (audio_enabled_ && audio_stream_ && cuda_->has_audio() &&
+    if (!paused_ && audio_enabled_ && audio_stream_ && cuda_->has_audio() &&
         SDL_GetAudioStreamQueued(audio_stream_) < 4096 * 8) {
       const int authored_frame = !catalog_.demos().empty() && catalog_.demos()[selected_].timeline_seconds > 0
                                      ? static_cast<int>(elapsed_ * 60.0f)
@@ -531,6 +531,7 @@ void Application::draw_preview() {
       elapsed_ = playhead;
       frame_ = static_cast<int>(elapsed_ * 60.0f);
       cuda_->reset();
+      render_requested_ = true;
       if (audio_stream_)
         SDL_ClearAudioStream(audio_stream_);
     }
@@ -545,8 +546,10 @@ void Application::draw_preview() {
                                  ? static_cast<int>(elapsed_ * 60.0f)
                                  : frame_;
   FrameParams params{width, height, elapsed_, delta_, mouse_x_, mouse_y_, authored_frame, quality_};
-  if (!paused_ && cuda_->ready())
+  if ((!paused_ || render_requested_) && cuda_->ready()) {
     gpu_ms_ = cuda_->render(params);
+    render_requested_ = false;
+  }
   const ImVec2 top_left = ImGui::GetCursorScreenPos();
   ImGui::Image(static_cast<ImTextureID>(cuda_->texture()), area, {0, 1}, {1, 0});
   if (ImGui::IsItemHovered()) {
@@ -598,6 +601,7 @@ void Application::load_demo(std::size_t index) {
   editor_->ClearMarkers();
   elapsed_ = 0;
   frame_ = 0;
+  render_requested_ = true;
   compile();
 }
 
@@ -623,6 +627,7 @@ void Application::compile() {
   if (result.ok) {
     elapsed_ = 0;
     frame_ = 0;
+    render_requested_ = true;
   }
 }
 
