@@ -119,8 +119,9 @@ and the repository's `.clang-format` file.
 5. **Curate hard.** A demo must be visually or technically exceptional—and preferably both.
 6. **Scale up without hiding CUDA.** Helpers remove ceremony; they do not disguise execution, memory, or synchronization.
 
-See [Architecture](docs/architecture.md), [Demo standard](docs/demo-standard.md),
-[CUDA feature atlas](docs/feature-atlas.md), and [Roadmap](docs/roadmap.md).
+See [Architecture](docs/architecture.md), [CUDA editor and formatting](docs/editor.md),
+[Demo standard](docs/demo-standard.md), [CUDA feature atlas](docs/feature-atlas.md),
+and [Roadmap](docs/roadmap.md).
 
 ## Build and test
 
