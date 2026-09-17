@@ -4,5 +4,6 @@
   "description": "Light bends around a black hole and cuts through a turbulent, relativistically Doppler-shifted accretion disk.",
   "category": "RAY MARCHING",
   "entry": "cosmos.cu",
-  "controls": "Move pointer to orbit"
+  "controls": "Move pointer to orbit",
+  "techniques": "ray marching · adaptive integration · fast math"
 }

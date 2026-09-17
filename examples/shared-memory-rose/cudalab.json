@@ -1,0 +1,9 @@
+{
+  "name": "shared-memory-rose",
+  "title": "Shared Memory Rose",
+  "description": "Each thread block grows one stained-glass petal, sharing a tiny neighborhood before joining the larger rose window.",
+  "category": "PARALLEL POETICS",
+  "entry": "shared-memory-rose.cu",
+  "controls": "Move pointer to refract the window",
+  "techniques": "shared-memory tiles · barriers · neighborhood gradients"
+}

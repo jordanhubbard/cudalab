@@ -9,9 +9,10 @@ fun: a curated gallery, visible source, a live preview, one-keystroke iteration,
 diagnostics, tiny package manifests, and examples worth opening just to watch. Here the
 medium is native CUDA C++ rather than JavaScript.
 
-> **Status:** early, working studio. The live compiler, CUDA/OpenGL interop, package
-> catalog, editor, diagnostics, GPU timing, and first three pieces are present. The
-> roadmap deliberately starts narrow and deep rather than shipping fifty mediocre demos.
+> **Status:** early, working studio. The live compiler, staged kernel lifecycle,
+> persistent device state, GPU audio, CUDA/OpenGL interop, package catalog, editor,
+> diagnostics, GPU timing, and first thirteen pieces are present. The roadmap deliberately
+> starts narrow and deep rather than shipping fifty mediocre demos.
 
 ## The first gallery
 
@@ -20,9 +21,19 @@ medium is native CUDA C++ rather than JavaScript.
 | **Hello, Spectrum** | Minimal one-thread-per-pixel kernel and pointer interaction |
 | **CUDA Cosmos** | Curved-ray black-hole renderer, turbulent accretion disk, Doppler color |
 | **Mandelbulb Cathedral** | Distance-estimated 3D fractal, orbit traps, shadows, atmosphere |
+| **Glass Menagerie** | Stochastic light transport through glass, pearl, and metal |
+| **Reaction Garden** | Persistent Gray–Scott chemistry and pointer-seeded growth |
+| **Fluid Calligraphy** | Semi-Lagrangian ink, smoke, and gold-leaf advection |
+| **Firefly Constellation** | 262,144 persistent agents, warp exchange, and atomic trails |
+| **Tensor Tapestry** | Thousands of live WMMA tensor-core matrix products |
+| **Warp Loom** | Warp shuffle and ballot operations made into iridescent textile |
+| **Shared Memory Rose** | Thread-block collaboration as a stained-glass rose window |
+| **Memory Corruption** | CUB block radix sort used as a live image-making operation |
+| **Feedback Cathedral** | Persistent recursive framebuffer and temporal image warping |
+| **Spectral Orchard** | CUDA-synthesized stereo score and synchronized nocturnal world |
 
 Every example is procedural, self-contained, live-editable, and runs through the same
-small ABI. A failed compile leaves the last good kernel running.
+small staged ABI. A failed compile leaves the last good composition running.
 
 ## Quick start
 
@@ -60,7 +71,7 @@ uses each platform's supported windowing package.
 ## Authoring model
 
 A package is a directory under `examples/` with a `cudalab.json` manifest and one `.cu`
-entry. The entry exports exactly one kernel:
+entry. The entry exports `render` and may add `reset`, `simulate`, `composite`, and `audio`:
 
 ```cpp
 #include <cudalab.cuh>
@@ -73,10 +84,17 @@ CUDALAB_KERNEL {
 }
 ```
 
-The host launches a 16×16 grid and passes resolution, time, frame delta, normalized
-pointer position, frame number, and quality. NVRTC compiles for the **actual installed
-GPU**. CUDA writes into an OpenGL pixel buffer registered with CUDA graphics interop;
-OpenGL then displays it directly.
+Stateful pieces declare `state_bytes` and `work_items` in their manifest. Cudalab allocates
+persistent stream-ordered GPU memory and runs the stages as:
+
+```text
+reset (once) → simulate → render → composite → audio
+```
+
+The host passes resolution, time, frame delta, normalized pointer position, frame number,
+and quality. NVRTC compiles for the **actual installed GPU**. CUDA writes into an OpenGL
+pixel buffer registered with CUDA graphics interop; OpenGL then displays it directly.
+Optional stereo audio is synthesized on the GPU and queued to SDL's native audio stream.
 
 ## Studio controls
 
@@ -94,8 +112,8 @@ OpenGL then displays it directly.
 5. **Curate hard.** A demo must be visually or technically exceptional—and preferably both.
 6. **Scale up without hiding CUDA.** Helpers remove ceremony; they do not disguise execution, memory, or synchronization.
 
-See [Architecture](docs/architecture.md), [Demo standard](docs/demo-standard.md), and
-[Roadmap](docs/roadmap.md).
+See [Architecture](docs/architecture.md), [Demo standard](docs/demo-standard.md),
+[CUDA feature atlas](docs/feature-atlas.md), and [Roadmap](docs/roadmap.md).
 
 ## Build and test
 

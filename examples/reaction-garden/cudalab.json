@@ -1,0 +1,11 @@
+{
+  "name": "reaction-garden",
+  "title": "Reaction Garden",
+  "description": "A living Gray–Scott chemistry blooms into coral, mitosis, and ink-veined botanical forms under the pointer.",
+  "category": "EMERGENT SYSTEMS",
+  "entry": "reaction-garden.cu",
+  "controls": "Move pointer to seed chemistry",
+  "techniques": "persistent memory · stencil compute · ping-pong fields",
+  "state_bytes": 9437184,
+  "work_items": 589824
+}

@@ -13,7 +13,7 @@ runtime with native GPU machinery:
 | Canvas preview | CUDA/OpenGL interoperable texture |
 | Errors/log/compile panel | NVRTC diagnostics and timing |
 | FPS counter | UI FPS plus CUDA event kernel time |
-| `setup/update/teardown` | Stable render ABI now; lifecycle ABI next |
+| `setup/update/teardown` | `reset/simulate/render/composite/audio` staged CUDA ABI |
 | Browser portability | Native Windows/Linux builds |
 
 ## Frame path
@@ -42,10 +42,23 @@ The driver JIT loads that PTX and resolves the required `render` symbol. Compila
 transactional: Cudalab loads a candidate module completely before unloading the current
 one, so broken edits keep the last successful visual running.
 
-The current render ABI is intentionally tiny. It is the first rung, not the ceiling.
-The next ABI revision adds optional lifecycle entry points and an opaque host service
-table for persistent buffers, multiple streams, CUDA graphs, texture/surface objects,
-and library handles.
+The ABI is intentionally small. `render` is required; `reset`, `simulate`, `composite`,
+and `audio` are optional. Manifests declare persistent state size and logical work-item
+count. Memory comes from the stream-ordered allocator, survives between frames, and resets
+transactionally after a successful source recompile. The next host-service revision adds named buffers,
+multiple streams, CUDA graphs, texture/surface objects, camera frames, and library handles.
+
+```text
+reset (once after load/recompile)
+  ↓
+simulate (logical 1D workload)
+  ↓
+render (16×16 screen tiles into CUDA/OpenGL PBO)
+  ↓
+composite (logical 1D workload, useful for particle splats)
+  ↓
+audio (optional stereo GPU synthesis into SDL stream)
+```
 
 ## Capability ladder
 

@@ -1,0 +1,10 @@
+#include <cudalab.cuh>
+
+constexpr int MAX_PIXELS=3145728;
+__device__ float4 sample(const float4* image,float x,float y,int w,int h){x=fminf(w-1,fmaxf(0,x));y=fminf(h-1,fmaxf(0,y));int x0=(int)x,y0=(int)y,x1=min(w-1,x0+1),y1=min(h-1,y0+1);float ax=x-x0,ay=y-y0;float4 a=image[y0*w+x0],b=image[y0*w+x1],c=image[y1*w+x0],d=image[y1*w+x1];return make_float4((a.x*(1-ax)+b.x*ax)*(1-ay)+(c.x*(1-ax)+d.x*ax)*ay,(a.y*(1-ax)+b.y*ax)*(1-ay)+(c.y*(1-ax)+d.y*ax)*ay,(a.z*(1-ax)+b.z*ax)*(1-ay)+(c.z*(1-ax)+d.z*ax)*ay,1);}
+CUDALAB_RENDER {
+  int x=blockIdx.x*blockDim.x+threadIdx.x,y=blockIdx.y*blockDim.y+threadIdx.y;if(x>=params.width||y>=params.height||!state||params.width*params.height>MAX_PIXELS)return;int count=params.width*params.height;auto* frames=static_cast<float4*>(state);const float4* src=frames+((params.frame&1)?count:0);float4* dst=frames+((params.frame&1)?0:count);
+  float2 p=make_float2((x-params.width*.5f)/params.height,(y-params.height*.5f)/params.height);float r=hypotf(p.x,p.y),a=atan2f(p.y,p.x);float zoom=.987f+.006f*sinf(params.time*.17f),turn=.004f+.012f*(params.mouse_x-.5f);float ca=cosf(turn),sa=sinf(turn);float2 q=make_float2((p.x*ca-p.y*sa)*zoom,(p.x*sa+p.y*ca)*zoom);q.x+=(params.mouse_x-.5f)*.0025f;q.y+=(params.mouse_y-.5f)*.0025f;
+  float4 old=sample(src,q.x*params.height+params.width*.5f,q.y*params.height+params.height*.5f,params.width,params.height);float arches=powf(fabsf(sinf(a*6+r*18-params.time*.45f)),22)*expf(-r*.9f);float window=expf(-fabsf(r-(.20f+.04f*sinf(a*5)))*95);float beam=powf(fmaxf(0,cosf(a*9+params.time*.11f)),35)*expf(-r*1.8f);
+  float3 fresh=make_float3(arches*.22f+window*.85f+beam*.12f,arches*.08f+window*.18f+beam*.3f,arches*.46f+window*.62f+beam*.8f);float3 c=make_float3(old.y*.975f+fresh.x,old.z*.968f+fresh.y,old.x*.962f+fresh.z);float fade=.996f-r*.006f;c.x*=fade;c.y*=fade;c.z*=fade;dst[y*params.width+x]=make_float4(c.x,c.y,c.z,1);c=cudalab_tonemap(c);pixels[y*params.width+x]=make_uchar4(255*powf(cudalab_saturate(c.x),.4545f),255*powf(cudalab_saturate(c.y),.4545f),255*powf(cudalab_saturate(c.z),.4545f),255);
+}

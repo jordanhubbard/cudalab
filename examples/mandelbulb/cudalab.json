@@ -4,5 +4,6 @@
   "description": "A distance-estimated eighth-order fractal with soft shadows, orbit traps, atmospheric glow, and a perpetual camera flight.",
   "category": "FRACTALS",
   "entry": "mandelbulb.cu",
-  "controls": "Move pointer to orbit"
+  "controls": "Move pointer to orbit",
+  "techniques": "distance estimation · unrolling · soft shadows"
 }

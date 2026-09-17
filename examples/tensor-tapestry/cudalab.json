@@ -1,0 +1,11 @@
+{
+  "name": "tensor-tapestry",
+  "title": "Tensor Tapestry",
+  "description": "Thousands of tensor-core matrix products weave a continuously changing textile of interference, symmetry, and metallic color.",
+  "category": "TENSOR ART",
+  "entry": "tensor-tapestry.cu",
+  "controls": "Move pointer to retune the weave",
+  "techniques": "WMMA · tensor cores · half precision",
+  "state_bytes": 4194304,
+  "work_items": 131072
+}

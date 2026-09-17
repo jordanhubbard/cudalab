@@ -1,0 +1,10 @@
+{
+  "name": "feedback-cathedral",
+  "title": "Feedback Cathedral",
+  "description": "Yesterday's frame becomes today's architecture: a persistent video-feedback nave of recursive light, lensing, and chromatic memory.",
+  "category": "VIDEO & FEEDBACK",
+  "entry": "feedback-cathedral.cu",
+  "controls": "Move pointer to pull the recursion through space",
+  "techniques": "persistent framebuffers · image warping · temporal feedback",
+  "state_bytes": 100663296
+}

@@ -9,14 +9,18 @@
 - Device/compiler telemetry and kernel timing
 - Spectrum, CUDA Cosmos, and Mandelbulb Cathedral
 
-## 0.2 — Stateful compute
+## 0.2 — Stateful compute (in progress)
 
-- `setup`, `update`, and `teardown` device-module lifecycle
-- Persistent named buffers and texture/surface objects
-- Stream-ordered allocator and multi-stream scheduler
+- [x] `reset`, `simulate`, `render`, `composite`, and `audio` device-module lifecycle
+- [x] Persistent state backed by the stream-ordered allocator
+- [x] Artistic pieces for particles, reaction systems, fluids, temporal feedback,
+  tensor cores, warp collectives, shared memory, CUB, path tracing, and GPU audio
+- [ ] Persistent named buffers and texture/surface objects
+- [ ] Multi-stream scheduler
 - CUDA graph capture/replay with parameter updates
 - Save-as/new package, file tree, tabs, dirty-close flow, syntax highlighting
-- Reaction-diffusion, million-body gravity, fluid, and particle-fluid pieces
+- [x] Reaction-diffusion, fluid, and particle pieces
+- [ ] Million-body gravity and particle-fluid pieces
 
 ## 0.3 — Modern architecture gallery
 

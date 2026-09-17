@@ -1,0 +1,11 @@
+{
+  "name": "firefly-constellation",
+  "title": "Firefly Constellation",
+  "description": "A quarter-million luminous agents braid themselves into a breathing celestial organism, leaving slowly fading phosphor trails.",
+  "category": "PARTICLE WORLDS",
+  "entry": "fireflies.cu",
+  "controls": "Move pointer to bend the swarm",
+  "techniques": "persistent particles · warp shuffle · atomic splatting",
+  "state_bytes": 33554432,
+  "work_items": 262144
+}

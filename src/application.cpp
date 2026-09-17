@@ -62,19 +62,20 @@ void set_studio_theme() {
 
 }  // namespace
 
-Application::Application() : catalog_(DemoCatalog::scan(find_examples())) {
+Application::Application(bool hidden) : catalog_(DemoCatalog::scan(find_examples())) {
 #if defined(__linux__)
   // NVIDIA CUDA/OpenGL interop currently requires the GLX path on Wayland desktops.
   // Respect an explicit user choice; otherwise prefer X11 and retain Wayland fallback.
   if (!std::getenv("SDL_VIDEO_DRIVER")) SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11,wayland");
 #endif
-  if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) throw std::runtime_error(SDL_GetError());
+  if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS)) throw std::runtime_error(SDL_GetError());
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  window_ = SDL_CreateWindow("Cudalab — CUDA Creative Studio", 1600, 960,
-                             SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+  SDL_WindowFlags window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+  if (hidden) window_flags |= SDL_WINDOW_HIDDEN;
+  window_ = SDL_CreateWindow("Cudalab — CUDA Creative Studio", 1600, 960, window_flags);
   if (!window_) throw std::runtime_error(SDL_GetError());
   gl_context_ = SDL_GL_CreateContext(window_);
   if (!gl_context_) throw std::runtime_error(SDL_GetError());
@@ -92,12 +93,16 @@ Application::Application() : catalog_(DemoCatalog::scan(find_examples())) {
   ImGui_ImplOpenGL3_Init("#version 330 core");
 
   cuda_ = std::make_unique<CudaRuntime>();
+  SDL_AudioSpec audio_spec{SDL_AUDIO_F32, 2, 48000};
+  audio_stream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audio_spec, nullptr, nullptr);
+  if (audio_stream_) SDL_ResumeAudioStreamDevice(audio_stream_);
   if (!catalog_.demos().empty()) load_demo(0);
   for (const auto& error : catalog_.errors()) output_ += "[catalog] " + error + "\n";
 }
 
 Application::~Application() {
   cuda_.reset();
+  if (audio_stream_) SDL_DestroyAudioStream(audio_stream_);
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();
@@ -133,6 +138,11 @@ int Application::run() {
     draw_editor();
     draw_preview();
     draw_output();
+    if (audio_enabled_ && audio_stream_ && cuda_->has_audio() && SDL_GetAudioStreamQueued(audio_stream_) < 4096 * 8) {
+      FrameParams audio_params{0, 0, elapsed_, delta_, mouse_x_, mouse_y_, frame_, quality_};
+      const auto& audio = cuda_->synthesize_audio(audio_params);
+      SDL_PutAudioStreamData(audio_stream_, audio.data(), static_cast<int>(audio.size() * sizeof(float2)));
+    }
 
     ImGui::Render();
     int width = 0, height = 0;
@@ -146,6 +156,30 @@ int Application::run() {
   }
   if (source_ != saved_source_) save();
   return 0;
+}
+
+int Application::smoke_test() {
+  int failures = 0;
+  cuda_->resize(640, 360);
+  for (std::size_t i = 0; i < catalog_.demos().size(); ++i) {
+    load_demo(i);
+    if (!last_compile_ok_) { ++failures; continue; }
+    try {
+      for (int f = 0; f < 3; ++f) {
+        FrameParams params{640, 360, f / 60.0f, 1 / 60.0f, .5f, .5f, f, 2};
+        cuda_->render(params);
+      }
+      if (cuda_->has_audio()) {
+        FrameParams params{0, 0, 0, 1 / 60.0f, .5f, .5f, 0, 2};
+        if (cuda_->synthesize_audio(params).size() != 1024) throw std::runtime_error("audio kernel returned wrong frame count");
+      }
+      SDL_Log("[smoke] %s rendered successfully", catalog_.demos()[i].name.c_str());
+    } catch (const std::exception& error) {
+      SDL_Log("[smoke] %s failed: %s", catalog_.demos()[i].name.c_str(), error.what());
+      ++failures;
+    }
+  }
+  return failures == 0 ? 0 : 1;
 }
 
 void Application::draw_dockspace() {
@@ -218,6 +252,7 @@ void Application::draw_catalog() {
     ImGui::PushID(static_cast<int>(i));
     if (ImGui::Selectable(demo.title.c_str(), selected_ == i, ImGuiSelectableFlags_AllowDoubleClick)) load_demo(i);
     ImGui::TextDisabled("%s", demo.category.c_str());
+    if (!demo.techniques.empty()) ImGui::TextColored(ImVec4(.35f, .62f, 1, 1), "%s", demo.techniques.c_str());
     ImGui::PushTextWrapPos();
     ImGui::TextColored(ImVec4(.52f, .62f, .76f, 1), "%s", demo.description.c_str());
     ImGui::PopTextWrapPos();
@@ -256,6 +291,11 @@ void Application::draw_preview() {
   }
   ImGui::SameLine(ImGui::GetWindowWidth() - 250);
   ImGui::Text("%.2f ms  %.0f FPS", gpu_ms_, ImGui::GetIO().Framerate);
+  ImGui::SameLine();
+  if (ImGui::SmallButton(audio_enabled_ ? "Audio: on" : "Audio: muted")) {
+    audio_enabled_ = !audio_enabled_;
+    if (!audio_enabled_ && audio_stream_) SDL_ClearAudioStream(audio_stream_);
+  }
   const ImVec2 area = ImGui::GetContentRegionAvail();
   const int width = std::max(64, static_cast<int>(area.x));
   const int height = std::max(64, static_cast<int>(area.y));
@@ -293,7 +333,9 @@ void Application::load_demo(std::size_t index) {
   if (index >= catalog_.demos().size()) return;
   if (source_ != saved_source_) save();
   selected_ = index;
+  if (audio_stream_) SDL_ClearAudioStream(audio_stream_);
   source_path_ = catalog_.demos()[index].directory / catalog_.demos()[index].entry;
+  cuda_->configure(catalog_.demos()[index].state_bytes, catalog_.demos()[index].work_items);
   source_ = saved_source_ = read_file(source_path_);
   editor_buffer_.assign(std::max<std::size_t>(source_.size() * 3 + 65536, 1024 * 1024), '\0');
   std::copy(source_.begin(), source_.end(), editor_buffer_.begin());
@@ -312,6 +354,7 @@ void Application::compile() {
           << result.log << "\n\n";
   SDL_Log("%s", message.str().c_str());
   output_ = message.str() + output_;
+  last_compile_ok_ = result.ok;
   std::ostringstream title;
   title << "Cudalab — " << (catalog_.demos().empty() ? source_path_.filename().string() : catalog_.demos()[selected_].title)
         << " — " << (result.ok ? "live" : "compile error") << " — "

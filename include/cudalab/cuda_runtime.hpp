@@ -45,8 +45,11 @@ class CudaRuntime {
 
   [[nodiscard]] const DeviceInfo& device() const { return device_; }
   CompileResult compile(const std::string& source, const std::filesystem::path& source_name);
+  void configure(std::size_t state_bytes, int work_items);
   void resize(int width, int height);
   float render(const FrameParams& params);
+  const std::vector<float2>& synthesize_audio(const FrameParams& params, int frames = 1024, int sample_rate = 48000);
+  [[nodiscard]] bool has_audio() const { return audio_function_ != nullptr; }
   [[nodiscard]] unsigned int texture() const { return texture_; }
   [[nodiscard]] bool ready() const { return function_ != nullptr; }
 
@@ -57,11 +60,23 @@ class CudaRuntime {
   DeviceInfo device_;
   CUmodule module_ = nullptr;
   CUfunction function_ = nullptr;
+  CUfunction reset_function_ = nullptr;
+  CUfunction simulate_function_ = nullptr;
+  CUfunction composite_function_ = nullptr;
+  CUfunction audio_function_ = nullptr;
   unsigned int texture_ = 0;
   unsigned int pbo_ = 0;
   cudaGraphicsResource_t graphics_ = nullptr;
   cudaEvent_t start_ = nullptr;
   cudaEvent_t stop_ = nullptr;
+  cudaStream_t stream_ = nullptr;
+  void* state_ = nullptr;
+  std::size_t state_bytes_ = 0;
+  int work_items_ = 0;
+  bool reset_pending_ = false;
+  float2* audio_device_ = nullptr;
+  std::vector<float2> audio_host_;
+  unsigned long long audio_offset_ = 0;
   int width_ = 0;
   int height_ = 0;
 };

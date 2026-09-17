@@ -4,5 +4,6 @@
   "description": "The smallest complete Cudalab kernel: one GPU thread per pixel, animated color, pointer interaction, and tone mapping.",
   "category": "START HERE",
   "entry": "spectrum.cu",
-  "controls": "Move the pointer"
+  "controls": "Move the pointer",
+  "techniques": "SIMT · fast math · coalesced writes"
 }

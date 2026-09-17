@@ -1,0 +1,9 @@
+{
+  "name": "spectral-orchard",
+  "title": "Spectral Orchard",
+  "description": "A GPU-synthesized glass harmonica grows a nocturnal orchard whose branches, fruit, and aurora share the same evolving score.",
+  "category": "AUDIOVISUAL",
+  "entry": "spectral-orchard.cu",
+  "controls": "Move pointer to bend harmony and wind · Audio toggle in preview",
+  "techniques": "GPU audio synthesis · additive voices · stereo spatialization"
+}

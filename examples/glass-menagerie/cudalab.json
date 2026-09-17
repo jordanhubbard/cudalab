@@ -1,0 +1,9 @@
+{
+  "name": "glass-menagerie",
+  "title": "Glass Menagerie",
+  "description": "A small impossible museum of glass, pearl, and molten metal, lit by stochastic paths through a luminous ceiling.",
+  "category": "PATH TRACING",
+  "entry": "glass-menagerie.cu",
+  "controls": "Move pointer to inspect the sculpture",
+  "techniques": "Monte Carlo paths · refraction · Fresnel · Russian roulette"
+}

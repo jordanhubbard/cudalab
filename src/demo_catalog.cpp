@@ -31,6 +31,13 @@ std::string field(const std::string& json, const char* key, bool required = true
   return value;
 }
 
+std::size_t integer_field(const std::string& json, const char* key, std::size_t fallback = 0) {
+  const std::regex pattern(std::string("\"") + key + "\"\\s*:\\s*([0-9]+)");
+  std::smatch match;
+  if (!std::regex_search(json, match, pattern)) return fallback;
+  return static_cast<std::size_t>(std::stoull(match[1].str()));
+}
+
 }  // namespace
 
 DemoCatalog DemoCatalog::scan(const std::filesystem::path& root) {
@@ -52,6 +59,9 @@ DemoCatalog DemoCatalog::scan(const std::filesystem::path& root) {
       demo.category = field(json, "category");
       demo.entry = field(json, "entry");
       demo.controls = field(json, "controls", false);
+      demo.techniques = field(json, "techniques", false);
+      demo.state_bytes = integer_field(json, "state_bytes");
+      demo.work_items = static_cast<int>(integer_field(json, "work_items"));
       demo.directory = item.path();
       if (!std::filesystem::is_regular_file(demo.directory / demo.entry)) {
         throw std::runtime_error("entry does not exist: " + demo.entry);
