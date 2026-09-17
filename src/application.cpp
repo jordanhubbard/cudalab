@@ -6,6 +6,7 @@
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_internal.h>
+#include <TextEditor.h>
 
 #include <algorithm>
 #include <chrono>
@@ -13,8 +14,17 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
+
+#if defined(_WIN32)
+#include <process.h>
+#else
+#include <spawn.h>
+#include <sys/wait.h>
+extern char** environ;
+#endif
 
 namespace cudalab {
 namespace {
@@ -30,6 +40,48 @@ std::string read_file(const std::filesystem::path& path) {
 std::string lower(std::string value) {
   std::ranges::transform(value, value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
   return value;
+}
+
+const TextEditor::Language* cuda_language() {
+  static const TextEditor::Language language = [] {
+    auto result = *TextEditor::Language::Cpp();
+    result.name = "CUDA C++";
+    result.keywords.insert({
+      "__device__", "__global__", "__host__", "__shared__", "__constant__", "__managed__",
+      "__restrict__", "__launch_bounds__", "__grid_constant__", "__forceinline__", "__noinline__",
+      "__syncthreads", "__syncwarp", "__threadfence", "__threadfence_block", "__threadfence_system"
+    });
+    result.declarations.insert({
+      "dim3", "cudaStream_t", "cudaEvent_t", "cudaTextureObject_t", "cudaSurfaceObject_t",
+      "half", "half2", "nv_bfloat16", "float2", "float3", "float4", "double2", "int2", "int3",
+      "int4", "uint2", "uint3", "uint4", "uchar4", "CudalabParams"
+    });
+    result.identifiers.insert({
+      "threadIdx", "blockIdx", "blockDim", "gridDim", "warpSize", "clock64", "atomicAdd", "atomicCAS",
+      "__shfl_sync", "__shfl_down_sync", "__ballot_sync", "__activemask", "cooperative_groups", "cub",
+      "thrust", "wmma", "CUDALAB_RENDER", "CUDALAB_SIMULATE", "CUDALAB_RESET", "CUDALAB_COMPOSITE",
+      "CUDALAB_AUDIO"
+    });
+    return result;
+  }();
+  return &language;
+}
+
+int run_clang_format(const std::filesystem::path& path) {
+  const auto filename = path.string();
+#if defined(_WIN32)
+  return static_cast<int>(_spawnlp(_P_WAIT, "clang-format", "clang-format", "-i", "--style=file",
+                                   filename.c_str(), nullptr));
+#else
+  const char* arguments[] = {"clang-format", "-i", "--style=file", filename.c_str(), nullptr};
+  pid_t process = 0;
+  const int spawn_result = posix_spawnp(&process, "clang-format", nullptr, nullptr,
+                                        const_cast<char* const*>(arguments), environ);
+  if (spawn_result != 0) return spawn_result;
+  int status = 0;
+  if (waitpid(process, &status, 0) < 0 || !WIFEXITED(status)) return -1;
+  return WEXITSTATUS(status);
+#endif
 }
 
 void set_studio_theme() {
@@ -92,6 +144,16 @@ Application::Application(bool hidden) : catalog_(DemoCatalog::scan(find_examples
   ImGui_ImplSDL3_InitForOpenGL(window_, gl_context_);
   ImGui_ImplOpenGL3_Init("#version 330 core");
 
+  editor_ = std::make_unique<TextEditor>();
+  editor_->SetLanguage(cuda_language());
+  editor_->SetTabSize(2);
+  editor_->SetInsertSpacesOnTabs(true);
+  editor_->SetAutoIndentEnabled(true);
+  editor_->SetShowLineNumbersEnabled(true);
+  editor_->SetShowScrollbarMiniMapEnabled(true);
+  editor_->SetShowMatchingBrackets(true);
+  editor_->SetCompletePairedGlyphs(true);
+
   cuda_ = std::make_unique<CudaRuntime>();
   SDL_AudioSpec audio_spec{SDL_AUDIO_F32, 2, 48000};
   audio_stream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audio_spec, nullptr, nullptr);
@@ -103,6 +165,7 @@ Application::Application(bool hidden) : catalog_(DemoCatalog::scan(find_examples
 Application::~Application() {
   cuda_.reset();
   if (audio_stream_) SDL_DestroyAudioStream(audio_stream_);
+  editor_.reset();
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();
@@ -116,14 +179,26 @@ int Application::run() {
   while (running_) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-      ImGui_ImplSDL3_ProcessEvent(&event);
       if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) running_ = false;
+      bool shortcut_handled = false;
       if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
         const bool command = (event.key.mod & SDL_KMOD_CTRL) != 0;
-        if (event.key.key == SDLK_F5 || (command && event.key.key == SDLK_RETURN)) compile();
-        if (command && event.key.key == SDLK_S) save();
-        if (event.key.key == SDLK_SPACE && !ImGui::GetIO().WantTextInput) paused_ = !paused_;
+        const bool alt = (event.key.mod & SDL_KMOD_ALT) != 0;
+        if (event.key.key == SDLK_F5 || (command && event.key.key == SDLK_RETURN)) {
+          compile();
+          shortcut_handled = true;
+        } else if (command && event.key.key == SDLK_S) {
+          save();
+          shortcut_handled = true;
+        } else if (command && alt && event.key.key == SDLK_F) {
+          format();
+          shortcut_handled = true;
+        } else if (event.key.key == SDLK_SPACE && !ImGui::GetIO().WantTextInput) {
+          paused_ = !paused_;
+          shortcut_handled = true;
+        }
       }
+      if (!shortcut_handled) ImGui_ImplSDL3_ProcessEvent(&event);
     }
     const auto now = std::chrono::steady_clock::now();
     delta_ = std::min(.1f, std::chrono::duration<float>(now - previous).count());
@@ -198,6 +273,7 @@ void Application::draw_dockspace() {
   if (ImGui::BeginMenuBar()) {
     if (ImGui::BeginMenu("File")) {
       if (ImGui::MenuItem("Save", "Ctrl+S")) save();
+      if (ImGui::MenuItem("Format CUDA source", "Ctrl+Alt+F")) format();
       if (ImGui::MenuItem("Exit")) running_ = false;
       ImGui::EndMenu();
     }
@@ -269,14 +345,16 @@ void Application::draw_editor() {
   ImGui::SameLine();
   if (ImGui::Button("Save  Ctrl+S")) save();
   ImGui::SameLine();
+  if (ImGui::Button("Format  Ctrl+Alt+F")) format();
+  ImGui::SameLine();
   ImGui::TextColored(dirty ? ImVec4(1, .74f, .25f, 1) : ImVec4(.3f, .85f, .6f, 1),
                      dirty ? "modified" : "saved");
   ImGui::SameLine();
   ImGui::TextDisabled("%s", source_path_.filename().string().c_str());
   const auto available = ImGui::GetContentRegionAvail();
-  if (!editor_buffer_.empty() && ImGui::InputTextMultiline("##source", editor_buffer_.data(), editor_buffer_.size(),
-      available, ImGuiInputTextFlags_AllowTabInput)) {
-    source_ = editor_buffer_.data();
+  if (editor_) {
+    editor_->Render("##cuda-source", available, true);
+    source_ = editor_->GetText();
   }
   ImGui::End();
 }
@@ -337,8 +415,8 @@ void Application::load_demo(std::size_t index) {
   source_path_ = catalog_.demos()[index].directory / catalog_.demos()[index].entry;
   cuda_->configure(catalog_.demos()[index].state_bytes, catalog_.demos()[index].work_items);
   source_ = saved_source_ = read_file(source_path_);
-  editor_buffer_.assign(std::max<std::size_t>(source_.size() * 3 + 65536, 1024 * 1024), '\0');
-  std::copy(source_.begin(), source_.end(), editor_buffer_.begin());
+  editor_->SetText(source_);
+  editor_->ClearMarkers();
   elapsed_ = 0;
   frame_ = 0;
   compile();
@@ -346,8 +424,9 @@ void Application::load_demo(std::size_t index) {
 
 void Application::compile() {
   if (source_path_.empty()) return;
-  source_ = editor_buffer_.data();
+  source_ = editor_->GetText();
   const auto result = cuda_->compile(source_, source_path_);
+  update_diagnostic_markers(result.log);
   std::ostringstream message;
   message << (result.ok ? "[ok] " : "[error] ") << source_path_.filename().string()
           << " — " << std::fixed << std::setprecision(1) << result.milliseconds << " ms\n"
@@ -365,12 +444,58 @@ void Application::compile() {
 
 void Application::save() {
   if (source_path_.empty()) return;
-  source_ = editor_buffer_.data();
+  source_ = editor_->GetText();
   std::ofstream output(source_path_, std::ios::binary | std::ios::trunc);
   if (!output) { output_ = "[error] Cannot save " + source_path_.string() + "\n" + output_; return; }
   output << source_;
   saved_source_ = source_;
   output_ = "[saved] " + source_path_.string() + "\n" + output_;
+}
+
+void Application::format() {
+  if (source_path_.empty()) return;
+  source_ = editor_->GetText();
+  {
+    std::ofstream file(source_path_, std::ios::binary | std::ios::trunc);
+    if (!file) {
+      output_ = "[error] Cannot save before formatting " + source_path_.string() + "\n" + output_;
+      return;
+    }
+    file << source_;
+  }
+  saved_source_ = source_;
+  const int result = run_clang_format(source_path_);
+  if (result != 0) {
+    output_ = "[error] clang-format failed (exit " + std::to_string(result) +
+              "). Install clang-format and ensure it is on PATH.\n" + output_;
+    return;
+  }
+  source_ = saved_source_ = read_file(source_path_);
+  editor_->SetText(source_);
+  editor_->ClearMarkers();
+  output_ = "[formatted] " + source_path_.string() + "\n" + output_;
+}
+
+void Application::update_diagnostic_markers(const std::string& log) {
+  editor_->ClearMarkers();
+  static const std::regex location(R"((?:\(|:)([0-9]+)(?::[0-9]+)?(?:\)|:))");
+  std::istringstream lines(log);
+  std::string line;
+  int first_error = -1;
+  while (std::getline(lines, line)) {
+    std::smatch match;
+    if (!std::regex_search(line, match, location)) continue;
+    const int line_number = std::stoi(match[1].str()) - 1;
+    const bool warning = line.find("warning") != std::string::npos;
+    const ImU32 gutter = warning ? IM_COL32(236, 177, 65, 210) : IM_COL32(245, 78, 107, 220);
+    const ImU32 background = warning ? IM_COL32(130, 92, 20, 50) : IM_COL32(145, 30, 55, 60);
+    editor_->AddMarker(line_number, gutter, background, line, line);
+    if (!warning && first_error < 0) first_error = line_number;
+  }
+  if (first_error >= 0) {
+    editor_->SetCursor(first_error, 0);
+    editor_->ScrollToLine(first_error, TextEditor::Scroll::alignMiddle);
+  }
 }
 
 void Application::reset_layout() { first_layout_ = true; }

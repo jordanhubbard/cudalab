@@ -36,6 +36,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
+FetchContent_Declare(
+  imgui_color_text_edit
+  URL https://github.com/pthom/ImGuiColorTextEdit/archive/19cedecacf8d0632abf545d9cfa25b2a26baf55b.tar.gz
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(imgui_color_text_edit)
+
 add_library(cudalab_imgui STATIC
   ${imgui_SOURCE_DIR}/imgui.cpp
   ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -50,6 +57,12 @@ target_include_directories(cudalab_imgui PUBLIC
 )
 target_link_libraries(cudalab_imgui PUBLIC SDL3::SDL3 OpenGL::GL)
 target_compile_definitions(cudalab_imgui PRIVATE GL_GLEXT_PROTOTYPES)
+
+add_library(cudalab_text_editor STATIC
+  ${imgui_color_text_edit_SOURCE_DIR}/TextEditor.cpp
+)
+target_include_directories(cudalab_text_editor PUBLIC ${imgui_color_text_edit_SOURCE_DIR})
+target_link_libraries(cudalab_text_editor PUBLIC cudalab_imgui)
 
 add_executable(cudalab
   src/main.cpp
@@ -66,6 +79,7 @@ target_compile_definitions(cudalab PRIVATE
   CUDALAB_VERSION="${PROJECT_VERSION}"
 )
 target_link_libraries(cudalab PRIVATE
+  cudalab_text_editor
   cudalab_imgui
   SDL3::SDL3
   OpenGL::GL

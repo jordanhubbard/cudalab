@@ -10,7 +10,8 @@ struct SDL_AudioStream;
 #include <filesystem>
 #include <memory>
 #include <string>
-#include <vector>
+
+class TextEditor;
 
 namespace cudalab {
 
@@ -30,6 +31,8 @@ class Application {
   void load_demo(std::size_t index);
   void compile();
   void save();
+  void format();
+  void update_diagnostic_markers(const std::string& log);
   void reset_layout();
   static std::filesystem::path find_examples();
 
@@ -38,11 +41,11 @@ class Application {
   SDL_AudioStream* audio_stream_ = nullptr;
   DemoCatalog catalog_;
   std::unique_ptr<CudaRuntime> cuda_;
+  std::unique_ptr<TextEditor> editor_;
   std::size_t selected_ = 0;
   std::filesystem::path source_path_;
   std::string source_;
   std::string saved_source_;
-  std::vector<char> editor_buffer_;
   std::string output_;
   std::string filter_;
   float elapsed_ = 0.0f;

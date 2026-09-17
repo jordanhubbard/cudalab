@@ -43,6 +43,7 @@ Requirements:
 - CUDA Toolkit 13.0 or newer (13.3+ recommended)
 - CMake 3.28+, Ninja, a C++20 compiler
 - SDL 3 and OpenGL development packages
+- `clang-format` for the optional in-studio Format command
 
 Linux:
 
@@ -65,8 +66,9 @@ cmake --build build
 .\build\cudalab.exe
 ```
 
-Dear ImGui is fetched and pinned by CMake. SDL remains a system dependency so the app
-uses each platform's supported windowing package.
+Dear ImGui and the MIT-licensed ImGuiColorTextEdit component are fetched and pinned by
+CMake. SDL remains a system dependency so the app uses each platform's supported
+windowing package.
 
 ## Authoring model
 
@@ -100,8 +102,13 @@ Optional stereo audio is synthesized on the GPU and queued to SDL's native audio
 
 - **Ctrl+Enter** or **F5** — compile and run
 - **Ctrl+S** — save
+- **Ctrl+Alt+F** — format CUDA source with the project style
 - **Space** — pause/resume while the editor is not focused
 - Move over the preview — update `params.mouse_x/y`
+
+The native editor provides CUDA C++ syntax highlighting, line numbers, bracket matching,
+a source minimap, and inline NVRTC error/warning markers. Formatting uses `clang-format`
+and the repository's `.clang-format` file.
 
 ## Design principles
 
