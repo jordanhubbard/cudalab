@@ -135,6 +135,65 @@ The project targets portable C++20 today. CUDA 13.4 adds an NVCC C++23 mode; the
 runtime will adopt it after the supported-toolkit floor and host compiler matrix can do
 so without making the studio fragile.
 
+<!-- ai-template:narrative:start -->
+## The Totally True and Not At All Embellished History of Cudalab
+
+### The continuing adventures of Jordan Hubbard and Sir Reginald von Fluffington III
+
+> *Part 20 of an ongoing chronicle. [← Part 19: c26](https://github.com/jordanhubbard/c26#the-totally-true-and-not-at-all-embellished-history-of-c26)*
+> *[Chronicle index](https://github.com/jordanhubbard/ai-template/blob/main/CHRONICLE.md) · Ordered by first recorded AI-assisted commit.*
+
+The programmer had already built Artlab, a place where JavaScript could become pictures,
+sound, geometry, and, on sufficiently ambitious afternoons, objects suitable for export.
+It was a pleasant arrangement. Sir Reginald von Fluffington III had withheld endorsement,
+but this was normal and therefore almost encouraging.
+
+“Now,” said the programmer, “I shall do the same thing with CUDA.”
+
+Sir Reginald opened one eye. CUDA, as he understood it, was how the warm rectangle under
+the desk justified both its temperature and its fan noise. Turning it into an artistic
+medium seemed likely to interfere with an established sleeping arrangement.
+
+The programmer insisted that this would not be another gallery of matrices being added
+together at great speed. The arithmetic could remain, but it would have to produce
+something worth watching. Thus came a black hole with a relativistic accretion disk, a
+Mandelbulb cathedral, glass made from stochastic light transport, reaction-diffusion
+gardens, fluid calligraphy, a quarter-million fireflies, tensor-core tapestries, warp
+shuffles woven into cloth, and an orchard that composed its own stereo score on the GPU.
+Sir Reginald reviewed the list and found it suspiciously short on tuna.
+
+The browser was dismissed. Cudalab would be a native Windows and Linux studio, with SDL,
+OpenGL, Dear ImGui, and CUDA cooperating in the manner of specialists who had not been
+properly introduced. CUDA would write directly into an OpenGL pixel buffer. The CPU would
+not carry completed pictures back and forth merely to feel involved. NVRTC would compile
+each piece for the GPU actually installed, and a failed experiment would leave the last
+good frame alive rather than replacing the artwork with a dialog box.
+
+“The lifecycle is elegant,” the programmer said, pointing to
+`reset → simulate → render → composite → audio`.
+
+Sir Reginald placed one paw on `composite`, thereby demonstrating an alternative lifecycle
+with fewer guarantees.
+
+Persistent device memory allowed gardens, fluids, trails, and feedback to remember their
+previous frames. GPU-generated audio made the pictures audible. The gallery admitted only
+pieces that showed CUDA doing something artistically legible: shared memory became a rose
+window, CUB radix sort became image corruption, and WMMA operations became moving textile.
+Performance remained visible, but it was no longer permitted to be the entire punchline.
+
+Then the source pane acquired line numbers, a minimap, paired delimiters, and CUDA-aware
+color. NVRTC errors appeared on the offending lines while the last successful composition
+continued running. `clang-format` brought order to the kernels with Ctrl+Alt+F, an act the
+programmer described as “making the code readable.” Sir Reginald, who had been reading it
+by lying across the keyboard, regarded this as an unsupported interpretation of the word.
+
+Cudalab became the twentieth entry in the programmer's chronicle and the twentieth project
+Sir Reginald declined to endorse. The refusal cited excessive parallelism, unauthorized
+use of the warm rectangle, colorized evidence, insufficient tuna, and the continuing
+general atmosphere of hubris.
+
+<!-- ai-template:narrative:end -->
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
