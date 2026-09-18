@@ -66,6 +66,7 @@ private:
   bool last_compile_ok_ = false;
   bool audio_enabled_ = true;
   bool render_requested_ = true;
+  bool preview_hovered_ = false;
 };
 
 } // namespace cudalab

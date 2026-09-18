@@ -246,6 +246,8 @@ int Application::run() {
       if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
         const bool command = (event.key.mod & SDL_KMOD_CTRL) != 0;
         const bool alt = (event.key.mod & SDL_KMOD_ALT) != 0;
+        const bool ocean_controls = preview_hovered_ && !catalog_.demos().empty() &&
+                                    catalog_.demos()[selected_].name == "ocean-procession";
         if (event.key.key == SDLK_F5 || (command && event.key.key == SDLK_RETURN)) {
           compile();
           shortcut_handled = true;
@@ -258,16 +260,17 @@ int Application::run() {
         } else if (event.key.key == SDLK_SPACE && !ImGui::GetIO().WantTextInput) {
           paused_ = !paused_;
           shortcut_handled = true;
-        } else if (!ImGui::GetIO().WantTextInput && event.key.key >= SDLK_0 && event.key.key <= SDLK_9) {
+        } else if ((!ImGui::GetIO().WantTextInput || ocean_controls) && event.key.key >= SDLK_0 &&
+                   event.key.key <= SDLK_9) {
           beaufort_ = static_cast<int>(event.key.key - SDLK_0);
           render_requested_ = true;
           shortcut_handled = true;
-        } else if (!ImGui::GetIO().WantTextInput && event.key.key >= SDLK_KP_1 &&
+        } else if ((!ImGui::GetIO().WantTextInput || ocean_controls) && event.key.key >= SDLK_KP_1 &&
                    event.key.key <= SDLK_KP_9) {
           beaufort_ = static_cast<int>(event.key.key - SDLK_KP_1) + 1;
           render_requested_ = true;
           shortcut_handled = true;
-        } else if (!ImGui::GetIO().WantTextInput && event.key.key == SDLK_KP_0) {
+        } else if ((!ImGui::GetIO().WantTextInput || ocean_controls) && event.key.key == SDLK_KP_0) {
           beaufort_ = 0;
           render_requested_ = true;
           shortcut_handled = true;
@@ -592,7 +595,8 @@ void Application::draw_preview() {
       !catalog_.demos().empty() && catalog_.demos()[selected_].name == "firefly-constellation";
   const ImVec2 preview_uv0 = firefly_view ? ImVec2(.5f, .5f) : ImVec2(0, 0);
   ImGui::Image(static_cast<ImTextureID>(cuda_->texture()), area, preview_uv0, {1, 1});
-  if (ImGui::IsItemHovered()) {
+  preview_hovered_ = ImGui::IsItemHovered();
+  if (preview_hovered_) {
     const auto mouse = ImGui::GetMousePos();
     const float next_x = (mouse.x - top_left.x) / std::max(1.0f, area.x);
     const float next_y = (mouse.y - top_left.y) / std::max(1.0f, area.y);

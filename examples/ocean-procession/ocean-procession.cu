@@ -162,8 +162,7 @@ CUDALAB_RESET {
                                 3.45f - row * 2.18f + jitter_z * .46f,
                                 cosf(heading) * speed,
                                 sinf(heading) * speed);
-  ships[i].traits = make_float4(
-      heading, ocean_hash(i * 5u + 4u), ocean_hash(i * 5u + 5u) * 24.0f, .7f + ocean_hash(i * 7u) * .3f);
+  ships[i].traits = make_float4(heading, ocean_hash(i * 5u + 4u), ocean_hash(i * 5u + 5u) * 24.0f, 0.0f);
 }
 
 CUDALAB_SIMULATE {
@@ -207,22 +206,43 @@ CUDALAB_SIMULATE {
   float dt = fminf(params.delta, 1.0f / 20.0f);
   float2 wind = ocean_wind(params);
   float force = params.beaufort / 9.0f;
-  float target_speed = .035f + force * .48f;
-  float2 desired = make_float2(wind.x * target_speed, wind.y * target_speed);
-  velocity.x += (desired.x - velocity.x) * dt * (.24f + force * .38f);
-  velocity.y += (desired.y - velocity.y) * dt * (.24f + force * .38f);
+  float wind_meters_per_second = params.beaufort > 0 ? .836f * powf((float)params.beaufort, 1.5f) : 0.0f;
+  float wind_speed = wind_meters_per_second * .030f;
+  float2 course = wind;
   if (neighbors > 0) {
     float inverse = 1.0f / neighbors;
     cohesion = make_float2(cohesion.x * inverse - position.x, cohesion.y * inverse - position.y);
     alignment = make_float2(alignment.x * inverse - velocity.x, alignment.y * inverse - velocity.y);
-    velocity.x += (cohesion.x * .018f + alignment.x * .10f + separation.x * .24f) * dt;
-    velocity.y += (cohesion.y * .018f + alignment.y * .10f + separation.y * .24f) * dt;
+    course.x += cohesion.x * .055f + alignment.x * .32f + separation.x * .72f;
+    course.y += cohesion.y * .055f + alignment.y * .32f + separation.y * .72f;
   }
   float wander = sinf(params.time * (.31f + ship.traits.y * .17f) + ship.traits.y * 31.0f);
-  velocity.x += -wind.y * wander * dt * (.018f + ship.traits.y * .018f);
-  velocity.y += wind.x * wander * dt * (.018f + ship.traits.y * .018f);
+  course.x += -wind.y * wander * (.08f + ship.traits.y * .08f);
+  course.y += wind.x * wander * (.08f + ship.traits.y * .08f);
+  float course_length = fmaxf(hypotf(course.x, course.y), 1e-5f);
+  course.x /= course_length;
+  course.y /= course_length;
+
+  float desired_heading = atan2f(course.y, course.x);
+  float heading_delta = atan2f(sinf(desired_heading - ship.traits.x), cosf(desired_heading - ship.traits.x));
+  float torque = heading_delta * (.20f + force * .46f) + wander * .035f;
+  ship.traits.w = fminf(.52f, fmaxf(-.52f, ship.traits.w * expf(-dt * 1.35f) + torque * dt));
+  ship.traits.x += ship.traits.w * dt;
+
+  float2 heading = make_float2(cosf(ship.traits.x), sinf(ship.traits.x));
+  float2 apparent_wind = make_float2(wind.x * wind_speed - velocity.x, wind.y * wind_speed - velocity.y);
+  float apparent_speed = hypotf(apparent_wind.x, apparent_wind.y);
+  float inverse_apparent = 1.0f / fmaxf(apparent_speed, 1e-5f);
+  float along_sail = fabsf((apparent_wind.x * heading.x + apparent_wind.y * heading.y) * inverse_apparent);
+  float sail_efficiency = .30f + .70f * sqrtf(fmaxf(0.0f, 1.0f - along_sail * along_sail));
+  float propulsion = apparent_speed * (.20f + .28f * sail_efficiency);
+  velocity.x += (heading.x * propulsion + wind.x * wind_speed * .035f + separation.x * .18f) * dt;
+  velocity.y += (heading.y * propulsion + wind.y * wind_speed * .035f + separation.y * .18f) * dt;
   float speed = hypotf(velocity.x, velocity.y);
-  float maximum = fmaxf(.075f, target_speed * 1.32f);
+  float drag = (.10f + speed * .28f) * dt;
+  velocity.x *= fmaxf(0.0f, 1.0f - drag);
+  velocity.y *= fmaxf(0.0f, 1.0f - drag);
+  float maximum = .08f + wind_speed * 1.18f;
   if (speed > maximum) {
     velocity.x *= maximum / speed;
     velocity.y *= maximum / speed;
@@ -230,18 +250,16 @@ CUDALAB_SIMULATE {
   position.x += velocity.x * dt;
   position.y += velocity.y * dt;
   ship.traits.z += dt;
-  float desired_heading = atan2f(velocity.y, velocity.x);
-  float heading_delta = atan2f(sinf(desired_heading - ship.traits.x), cosf(desired_heading - ship.traits.x));
-  ship.traits.x += heading_delta * dt * (.45f + force);
 
   // A vessel is recycled only after it has sailed beyond the visible world.
   if (fabsf(position.x) > 11.0f || fabsf(position.y) > 11.0f) {
     float2 side = make_float2(-wind.y, wind.x);
     float lane = (i - (SHIP_COUNT - 1) * .5f) * .54f + (ship.traits.y - .5f) * .7f;
     position = make_float2(-wind.x * 9.5f + side.x * lane, -wind.y * 9.5f + side.y * lane);
-    velocity = make_float2(wind.x * target_speed * (.8f + ship.traits.y * .3f),
-                           wind.y * target_speed * (.8f + ship.traits.y * .3f));
+    velocity = make_float2(wind.x * fmaxf(.06f, wind_speed) * (.8f + ship.traits.y * .3f),
+                           wind.y * fmaxf(.06f, wind_speed) * (.8f + ship.traits.y * .3f));
     ship.traits.z = 0.0f;
+    ship.traits.w = 0.0f;
   }
   ships[i].motion = make_float4(position.x, position.y, velocity.x, velocity.y);
   ships[i].traits = ship.traits;
@@ -408,7 +426,10 @@ CUDALAB_RENDER {
   float sock_direction_length = hypotf(sock_direction.x, sock_direction.y);
   sock_direction.x /= sock_direction_length;
   sock_direction.y /= sock_direction_length;
+  float flutter = sinf(params.time * (3.0f + params.beaufort * .82f)) * params.beaufort * .00065f;
   float2 sock_tip = make_float2(socket.x + sock_direction.x * .078f, socket.y + sock_direction.y * .078f);
+  sock_tip.x += -sock_direction.y * flutter;
+  sock_tip.y += sock_direction.x * flutter;
   float sock = ocean_segment(hud, socket, sock_tip);
   float sock_length = hypotf(sock_tip.x - socket.x, sock_tip.y - socket.y);
   float projection =
