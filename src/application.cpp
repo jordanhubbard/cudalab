@@ -565,8 +565,18 @@ void Application::draw_preview() {
     ImGui::SameLine();
     ImGui::TextDisabled("%.1f BPM", demo.bpm);
   }
-  if (!catalog_.demos().empty() && catalog_.demos()[selected_].name == "ocean-procession")
-    ImGui::TextDisabled("Wind: Beaufort %d  |  0-9 changes force  |  pointer changes direction", beaufort_);
+  if (!catalog_.demos().empty() && catalog_.demos()[selected_].name == "ocean-procession") {
+    float wind_x = (mouse_x_ - .5f) * 2.0f;
+    float wind_z = (mouse_y_ - .5f) * 2.0f;
+    if (std::hypot(wind_x, wind_z) < .24f) {
+      wind_x = 0.0f;
+      wind_z = -1.0f;
+    }
+    const float heading = std::atan2(wind_x, -wind_z) * 57.2957795f;
+    ImGui::TextDisabled("Wind: Beaufort %d  |  %+03.0f deg from horizon  |  pointer steers, 0-9 sets force",
+                        beaufort_,
+                        heading);
+  }
   const ImVec2 area = ImGui::GetContentRegionAvail();
   const int width = std::max(64, static_cast<int>(area.x));
   const int height = std::max(64, static_cast<int>(area.y));

@@ -49,13 +49,13 @@ __device__ float3 ocean_wave(float2 p, float time, int bands, float2 wind, int b
   float gradient_x = 0.0f;
   float gradient_z = 0.0f;
   float force = cudalab_saturate(beaufort / 9.0f);
-  float amplitude = .065f + .19f * force;
-  float frequency = .48f;
-  float speed = .24f + .72f * force;
-  float wind_angle = atan2f(wind.y, wind.x);
-  for (int i = 0; i < bands; ++i) {
-    float spread = 1.65f - force * .72f;
-    float angle = wind_angle + spread * sinf(i * 2.3999632f) + .12f * sinf(i * 1.73f);
+  float amplitude = .14f;
+  float frequency = .38f;
+  float speed = .31f;
+
+  // A world-space swell anchors the ocean and never rotates with pointer input.
+  for (int i = 0; i < 7; ++i) {
+    float angle = -1.5707963f + .58f * sinf(i * 2.3999632f) + .10f * sinf(i * 1.31f);
     float2 direction = make_float2(cosf(angle), sinf(angle));
     float phase = (p.x * direction.x + p.y * direction.y) * frequency + time * speed + i * .37f;
     float sine = sinf(phase);
@@ -63,9 +63,30 @@ __device__ float3 ocean_wave(float2 p, float time, int bands, float2 wind, int b
     height += amplitude * sine;
     gradient_x += derivative * direction.x;
     gradient_z += derivative * direction.y;
-    frequency *= 1.22f;
-    amplitude *= .75f;
-    speed *= 1.035f;
+    frequency *= 1.31f;
+    amplitude *= .68f;
+    speed *= 1.045f;
+  }
+
+  // Short wind-sea bands grow, tighten, and align as the Beaufort force rises.
+  amplitude = .115f * force;
+  frequency = 1.12f + force * .35f;
+  speed = .46f + force * 1.15f;
+  float wind_angle = atan2f(wind.y, wind.x);
+  int wind_bands = bands > 8 ? bands - 7 : 1;
+  for (int i = 0; i < wind_bands; ++i) {
+    float spread = 1.05f - force * .56f;
+    float angle = wind_angle + spread * sinf(i * 2.3999632f + .7f);
+    float2 direction = make_float2(cosf(angle), sinf(angle));
+    float phase = (p.x * direction.x + p.y * direction.y) * frequency + time * speed + i * 1.17f;
+    float sine = sinf(phase);
+    float derivative = amplitude * frequency * cosf(phase);
+    height += amplitude * sine;
+    gradient_x += derivative * direction.x;
+    gradient_z += derivative * direction.y;
+    frequency *= 1.27f;
+    amplitude *= .70f;
+    speed *= 1.055f;
   }
   return make_float3(height, gradient_x, gradient_z);
 }
@@ -273,9 +294,8 @@ CUDALAB_RENDER {
 
   float2 screen =
       make_float2((2.0f * x - params.width) / params.height, (params.height - 2.0f * y) / params.height);
-  float orbit = .12f * sinf(params.time * .055f);
   float distance = 10.2f;
-  float3 ro = make_float3(sinf(orbit) * distance, 4.3f, cosf(orbit) * distance);
+  float3 ro = make_float3(0.0f, 4.3f, distance);
   float3 target = make_float3(0.0f, .05f, 0.0f);
   float3 forward = ocean_norm(ocean_sub(target, ro));
   float3 right = ocean_norm(make_float3(forward.z, 0.0f, -forward.x));
@@ -330,6 +350,14 @@ CUDALAB_RENDER {
     float slope = hypotf(wave.y, wave.z);
     float foam = cudalab_saturate((slope - .66f) * 1.8f);
     foam = foam * foam * (.70f + .30f * sinf(point.x * 5.0f + point.z * 4.0f + params.time));
+    float wind_force = params.beaufort / 9.0f;
+    float downwind = point.x * wind.x + point.z * wind.y;
+    float crosswind = point.x * -wind.y + point.z * wind.x;
+    float wind_crest = powf(cudalab_saturate(.5f + .5f * sinf(downwind * (3.0f + wind_force * 4.5f) -
+                                                              params.time * (1.4f + wind_force * 3.0f))),
+                            18.0f);
+    wind_crest *= wind_force * wind_force * (.62f + .38f * sinf(crosswind * 2.7f + params.time * .17f));
+    foam = fmaxf(foam, wind_crest);
     color = ocean_add(color,
                       make_float3(glitter * 5.0f + foam * .48f,
                                   glitter * 3.6f + foam * .62f,
