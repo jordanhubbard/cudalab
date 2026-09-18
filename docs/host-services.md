@@ -104,8 +104,11 @@ frame without opening the studio:
 
 ```bash
 ./build/dev/cudalab --snapshot choreograph 20 frame.ppm
+./build/dev/cudalab --snapshot ocean-procession 7 gale.ppm 0.5 0.5 9
 ```
 
-This is intended for visual regression fixtures, documentation, and composition review.
+The optional final three arguments set normalized pointer X/Y and Beaufort force, making
+interaction and weather states reproducible. This is intended for visual regression
+fixtures, documentation, and composition review.
 The regular `--smoke-test` still compiles and renders every gallery entry, including graph,
 resource, timeline, and audio paths.

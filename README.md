@@ -105,6 +105,8 @@ Optional stereo audio is synthesized on the GPU and queued to SDL's native audio
 
 - **Ctrl+Enter** or **F5** — compile and run
 - **Ctrl+S** — save
+- **Ctrl+N** — create a new CUDA artwork package
+- **Ctrl+Shift+S** — clone the current artwork into a new package
 - **Ctrl+Alt+F** — format CUDA source with the project style
 - **Space** — pause/resume while the editor is not focused
 - Move over the preview — update `params.mouse_x/y` and gesture deltas
@@ -114,6 +116,10 @@ Optional stereo audio is synthesized on the GPU and queued to SDL's native audio
 The native editor provides CUDA C++ syntax highlighting, line numbers, bracket matching,
 a source minimap, and inline NVRTC error/warning markers. Formatting uses `clang-format`
 and the repository's `.clang-format` file.
+
+Every preview carries an in-frame instruction overlay sourced from its manifest. **Capture**
+writes the current GPU frame losslessly to `captures/`; new and cloned pieces appear in the
+gallery immediately without restarting the studio.
 
 ## Design principles
 

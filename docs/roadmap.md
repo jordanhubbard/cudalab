@@ -23,7 +23,8 @@
 - [x] **Choreograph**, a four-movement graph/timeline/named-resource production
 - [x] High-complexity ocean heightfield, animated buoyant fleet, and wakes
 - [x] Quality-scaled deep volumetric storm and procedural lightning
-- [ ] Save-as/new package, file tree, tabs, and dirty-close flow
+- [x] New package and clone/save-as authoring flow
+- [ ] Package file tree, tabs, and dirty-close flow
 - [x] Reaction-diffusion, fluid, and particle pieces
 - [ ] Million-body gravity and particle-fluid pieces
 
@@ -42,7 +43,8 @@
 - NPP image pipeline and video ingest/export
 - cuBLASLt/CUTLASS experiments
 - Vulkan external-memory backend; D3D12 interop on Windows
-- Screenshot and recording/export pipeline
+- [x] Lossless still-frame capture
+- [ ] GPU-native recording/export pipeline
 
 ## 1.0 — A demoscene instrument
 

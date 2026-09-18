@@ -246,9 +246,16 @@ int Application::run() {
       if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
         const bool command = (event.key.mod & SDL_KMOD_CTRL) != 0;
         const bool alt = (event.key.mod & SDL_KMOD_ALT) != 0;
+        const bool shift = (event.key.mod & SDL_KMOD_SHIFT) != 0;
         const bool ocean_controls = preview_hovered_ && !catalog_.demos().empty() &&
                                     catalog_.demos()[selected_].name == "ocean-procession";
-        if (event.key.key == SDLK_F5 || (command && event.key.key == SDLK_RETURN)) {
+        if (command && shift && event.key.key == SDLK_S) {
+          request_new_piece(true);
+          shortcut_handled = true;
+        } else if (command && event.key.key == SDLK_N) {
+          request_new_piece(false);
+          shortcut_handled = true;
+        } else if (event.key.key == SDLK_F5 || (command && event.key.key == SDLK_RETURN)) {
           compile();
           shortcut_handled = true;
         } else if (command && event.key.key == SDLK_S) {
@@ -368,7 +375,10 @@ int Application::smoke_test() {
 
 int Application::snapshot(const std::string& demo_name,
                           float time,
-                          const std::filesystem::path& output_path) {
+                          const std::filesystem::path& output_path,
+                          float mouse_x,
+                          float mouse_y,
+                          int beaufort) {
   const auto match = std::ranges::find_if(
       catalog_.demos(), [&](const Demo& demo) { return demo.name == demo_name || demo.title == demo_name; });
   if (match == catalog_.demos().end()) {
@@ -381,11 +391,14 @@ int Application::snapshot(const std::string& demo_name,
   constexpr int width = 960;
   constexpr int height = 540;
   constexpr float step = 1.0f / 60.0f;
+  mouse_x = std::clamp(mouse_x, 0.0f, 1.0f);
+  mouse_y = std::clamp(mouse_y, 0.0f, 1.0f);
+  beaufort = std::clamp(beaufort, 0, 9);
   cuda_->resize(width, height);
   const float start = std::max(0.0f, time - 2.0f);
   int frame = static_cast<int>(start * 60.0f);
   for (float t = start; t <= time + step * .5f; t += step, ++frame) {
-    FrameParams params{width, height, t, step, .58f, .43f, frame, 2};
+    FrameParams params{width, height, t, step, mouse_x, mouse_y, frame, 2, 0.0f, 0.0f, 0, beaufort};
     cuda_->render(params);
   }
 
@@ -419,8 +432,15 @@ void Application::draw_dockspace() {
   ImGui::PopStyleVar(3);
   if (ImGui::BeginMenuBar()) {
     if (ImGui::BeginMenu("File")) {
+      if (ImGui::MenuItem("New piece", "Ctrl+N"))
+        request_new_piece(false);
+      if (ImGui::MenuItem("Clone piece / Save As", "Ctrl+Shift+S"))
+        request_new_piece(true);
+      ImGui::Separator();
       if (ImGui::MenuItem("Save", "Ctrl+S"))
         save();
+      if (ImGui::MenuItem("Capture frame"))
+        capture_frame();
       if (ImGui::MenuItem("Format CUDA source", "Ctrl+Alt+F"))
         format();
       if (ImGui::MenuItem("Exit"))
@@ -510,6 +530,12 @@ void Application::draw_catalog() {
 void Application::draw_editor() {
   ImGui::Begin("Kernel");
   const bool dirty = source_ != saved_source_;
+  if (ImGui::Button("New"))
+    request_new_piece(false);
+  ImGui::SameLine();
+  if (ImGui::Button("Clone / Save As"))
+    request_new_piece(true);
+  ImGui::SameLine();
   if (ImGui::Button("Run  Ctrl+Enter"))
     compile();
   ImGui::SameLine();
@@ -528,6 +554,25 @@ void Application::draw_editor() {
     editor_->Render("##cuda-source", available, true);
     source_ = editor_->GetText();
   }
+  if (new_piece_popup_) {
+    ImGui::OpenPopup("Create CUDA artwork");
+    new_piece_popup_ = false;
+  }
+  if (ImGui::BeginPopupModal("Create CUDA artwork", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::TextUnformatted(clone_piece_ ? "Clone the current artwork into a new package."
+                                        : "Create a new live CUDA artwork.");
+    ImGui::InputTextWithHint(
+        "Package", "lowercase-package-name", new_piece_name_.data(), new_piece_name_.size());
+    ImGui::InputTextWithHint("Title", "Artwork title", new_piece_title_.data(), new_piece_title_.size());
+    if (ImGui::Button("Create", {120, 0})) {
+      if (create_piece())
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel", {120, 0}))
+      ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
+  }
   ImGui::End();
 }
 
@@ -536,8 +581,6 @@ void Application::draw_preview() {
   if (!catalog_.demos().empty()) {
     const auto& demo = catalog_.demos()[selected_];
     ImGui::TextColored(ImVec4(.78f, .86f, 1, 1), "%s", demo.title.c_str());
-    ImGui::SameLine();
-    ImGui::TextDisabled("  %s", demo.controls.c_str());
   }
   ImGui::SameLine(ImGui::GetWindowWidth() - 250);
   ImGui::Text("%.2f ms  %.0f FPS", gpu_ms_, ImGui::GetIO().Framerate);
@@ -547,6 +590,9 @@ void Application::draw_preview() {
     if (!audio_enabled_ && audio_stream_)
       SDL_ClearAudioStream(audio_stream_);
   }
+  ImGui::SameLine();
+  if (ImGui::SmallButton("Capture"))
+    capture_frame();
   if (!catalog_.demos().empty() && catalog_.demos()[selected_].timeline_seconds > 0.0f) {
     const auto& demo = catalog_.demos()[selected_];
     if (ImGui::SmallButton(paused_ ? "Play" : "Pause"))
@@ -580,6 +626,8 @@ void Application::draw_preview() {
   const ImVec2 area = ImGui::GetContentRegionAvail();
   const int width = std::max(64, static_cast<int>(area.x));
   const int height = std::max(64, static_cast<int>(area.y));
+  preview_width_ = width;
+  preview_height_ = height;
   cuda_->resize(width, height);
   const int authored_frame = !catalog_.demos().empty() && catalog_.demos()[selected_].timeline_seconds > 0
                                  ? static_cast<int>(elapsed_ * 60.0f)
@@ -606,6 +654,21 @@ void Application::draw_preview() {
   const ImVec2 preview_uv0 = firefly_view ? ImVec2(.5f, .5f) : ImVec2(0, 0);
   ImGui::Image(static_cast<ImTextureID>(cuda_->texture()), area, preview_uv0, {1, 1});
   preview_hovered_ = ImGui::IsItemHovered();
+  if (!catalog_.demos().empty()) {
+    const auto& demo = catalog_.demos()[selected_];
+    auto* draw = ImGui::GetWindowDrawList();
+    const ImVec2 overlay_end(top_left.x + area.x, top_left.y + 43.0f);
+    draw->PushClipRect(top_left, ImVec2(top_left.x + area.x, top_left.y + area.y), true);
+    draw->AddRectFilled(top_left, overlay_end, IM_COL32(5, 9, 18, 205));
+    draw->AddLine(ImVec2(top_left.x, overlay_end.y), overlay_end, IM_COL32(75, 130, 220, 180));
+    draw->AddText(
+        ImVec2(top_left.x + 12.0f, top_left.y + 6.0f), IM_COL32(205, 222, 255, 255), demo.title.c_str());
+    const std::string instructions =
+        demo.controls.empty() ? "Watch, listen, and edit the CUDA source." : demo.controls;
+    draw->AddText(
+        ImVec2(top_left.x + 12.0f, top_left.y + 23.0f), IM_COL32(145, 174, 220, 255), instructions.c_str());
+    draw->PopClipRect();
+  }
   if (preview_hovered_) {
     const auto mouse = ImGui::GetMousePos();
     const float next_x = (mouse.x - top_left.x) / std::max(1.0f, area.x);
@@ -705,6 +768,141 @@ void Application::save() {
   output << source_;
   saved_source_ = source_;
   output_ = "[saved] " + source_path_.string() + "\n" + output_;
+}
+
+void Application::request_new_piece(bool clone) {
+  clone_piece_ = clone;
+  new_piece_name_.fill('\0');
+  new_piece_title_.fill('\0');
+  std::string suggested_name =
+      clone && !catalog_.demos().empty() ? catalog_.demos()[selected_].name + "-study" : "untitled-artwork";
+  std::string suggested_title =
+      clone && !catalog_.demos().empty() ? catalog_.demos()[selected_].title + " Study" : "Untitled Artwork";
+  std::copy_n(suggested_name.c_str(),
+              std::min(suggested_name.size(), new_piece_name_.size() - 1),
+              new_piece_name_.data());
+  std::copy_n(suggested_title.c_str(),
+              std::min(suggested_title.size(), new_piece_title_.size() - 1),
+              new_piece_title_.data());
+  new_piece_popup_ = true;
+}
+
+bool Application::create_piece() {
+  const std::string name = new_piece_name_.data();
+  const std::string title = new_piece_title_.data();
+  const std::regex valid_name("[a-z0-9]+(?:-[a-z0-9]+)*");
+  if (!std::regex_match(name, valid_name) || title.empty()) {
+    output_ =
+        "[error] Package names use lowercase letters, digits, and single hyphens; title is required.\n" +
+        output_;
+    return false;
+  }
+  const auto directory = find_examples() / name;
+  if (std::filesystem::exists(directory)) {
+    output_ = "[error] Package already exists: " + directory.string() + "\n" + output_;
+    return false;
+  }
+
+  auto escape_json = [](const std::string& value) {
+    std::string escaped;
+    for (const char c : value) {
+      if (c == '\\' || c == '"')
+        escaped.push_back('\\');
+      escaped.push_back(c);
+    }
+    return escaped;
+  };
+  std::error_code error;
+  if (!std::filesystem::create_directories(directory, error)) {
+    output_ = "[error] Cannot create " + directory.string() + ": " + error.message() + "\n" + output_;
+    return false;
+  }
+
+  const auto entry = name + ".cu";
+  std::ofstream manifest(directory / "cudalab.json", std::ios::binary);
+  std::ofstream kernel(directory / entry, std::ios::binary);
+  if (!manifest || !kernel) {
+    output_ = "[error] Cannot write the new package in " + directory.string() + "\n" + output_;
+    return false;
+  }
+  manifest << "{\n"
+           << "  \"name\": \"" << name << "\",\n"
+           << "  \"title\": \"" << escape_json(title) << "\",\n"
+           << "  \"description\": \"A new CUDA artwork, ready to become something impossible.\",\n"
+           << "  \"category\": \"SKETCHBOOK\",\n"
+           << "  \"entry\": \"" << entry << "\",\n"
+           << "  \"controls\": \"Move the pointer to shape the artwork\",\n"
+           << "  \"techniques\": \"live CUDA C++ · procedural color\"\n"
+           << "}\n";
+  if (clone_piece_) {
+    kernel << editor_->GetText();
+  } else {
+    kernel << R"(#include <cudalab.cuh>
+
+CUDALAB_RENDER {
+  int x = blockIdx.x * blockDim.x + threadIdx.x;
+  int y = blockIdx.y * blockDim.y + threadIdx.y;
+  if (x >= params.width || y >= params.height)
+    return;
+
+  float2 uv = make_float2((2.0f * x - params.width) / params.height,
+                          (params.height - 2.0f * y) / params.height);
+  float distance = hypotf(uv.x - (params.mouse_x - .5f) * 2.0f,
+                          uv.y + (params.mouse_y - .5f) * 2.0f);
+  float pulse = .5f + .5f * sinf(distance * 24.0f - params.time * 3.0f);
+  float3 color = make_float3(.04f + pulse * .72f, .02f + pulse * pulse * .22f,
+                             .10f + (1.0f - pulse) * .85f);
+  color = cudalab_tonemap(color);
+  pixels[y * params.width + x] = make_uchar4(255 * powf(cudalab_saturate(color.x), .4545f),
+                                             255 * powf(cudalab_saturate(color.y), .4545f),
+                                             255 * powf(cudalab_saturate(color.z), .4545f), 255);
+}
+)";
+  }
+  manifest.close();
+  kernel.close();
+
+  catalog_ = DemoCatalog::scan(find_examples());
+  const auto created = std::ranges::find(catalog_.demos(), name, &Demo::name);
+  if (created == catalog_.demos().end()) {
+    output_ = "[error] Created package did not enter the catalog.\n" + output_;
+    return false;
+  }
+  load_demo(static_cast<std::size_t>(std::distance(catalog_.demos().begin(), created)));
+  output_ = "[created] " + directory.string() + "\n" + output_;
+  return true;
+}
+
+void Application::capture_frame() {
+  if (preview_width_ <= 0 || preview_height_ <= 0 || !cuda_->texture()) {
+    output_ = "[error] Preview is not ready to capture.\n" + output_;
+    return;
+  }
+  const auto capture_root = std::filesystem::current_path() / "captures";
+  std::error_code error;
+  std::filesystem::create_directories(capture_root, error);
+  if (error) {
+    output_ = "[error] Cannot create capture directory: " + error.message() + "\n" + output_;
+    return;
+  }
+  const auto stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                         .count();
+  const std::string name = catalog_.demos().empty() ? "artwork" : catalog_.demos()[selected_].name;
+  const auto path = capture_root / (name + "-" + std::to_string(stamp) + ".ppm");
+  std::vector<unsigned char> rgba(static_cast<std::size_t>(preview_width_) * preview_height_ * 4);
+  glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+  glBindTexture(GL_TEXTURE_2D, cuda_->texture());
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+  std::ofstream output(path, std::ios::binary | std::ios::trunc);
+  if (!output) {
+    output_ = "[error] Cannot write " + path.string() + "\n" + output_;
+    return;
+  }
+  output << "P6\n" << preview_width_ << ' ' << preview_height_ << "\n255\n";
+  for (std::size_t i = 0; i < static_cast<std::size_t>(preview_width_) * preview_height_; ++i)
+    output.write(reinterpret_cast<const char*>(rgba.data() + i * 4), 3);
+  output_ = "[captured] " + path.string() + "\n" + output_;
 }
 
 void Application::format() {

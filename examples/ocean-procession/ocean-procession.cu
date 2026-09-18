@@ -49,7 +49,9 @@ __device__ float3 ocean_wave(float2 p, float time, int bands, float2 wind, int b
   float gradient_x = 0.0f;
   float gradient_z = 0.0f;
   float force = cudalab_saturate(beaufort / 9.0f);
-  float amplitude = .14f;
+  // Total geometric wave height follows Beaufort force directly: near-flat at
+  // zero, increasingly tall swell plus wind sea toward strong gale.
+  float amplitude = .018f + .205f * force;
   float frequency = .38f;
   float speed = .31f;
 
@@ -69,7 +71,7 @@ __device__ float3 ocean_wave(float2 p, float time, int bands, float2 wind, int b
   }
 
   // Short wind-sea bands grow, tighten, and align as the Beaufort force rises.
-  amplitude = .115f * force;
+  amplitude = .135f * force;
   frequency = 1.12f + force * .35f;
   speed = .46f + force * 1.15f;
   float wind_angle = atan2f(wind.y, wind.x);
@@ -454,8 +456,11 @@ CUDALAB_RENDER {
   float sock_direction_length = hypotf(sock_direction.x, sock_direction.y);
   sock_direction.x /= sock_direction_length;
   sock_direction.y /= sock_direction_length;
+  float displayed_force = params.beaufort / 9.0f;
   float flutter = sinf(params.time * (3.0f + params.beaufort * .82f)) * params.beaufort * .00065f;
-  float2 sock_tip = make_float2(socket.x + sock_direction.x * .078f, socket.y + sock_direction.y * .078f);
+  float sock_extent = .032f + .046f * displayed_force;
+  float2 sock_tip = make_float2(socket.x + sock_direction.x * sock_extent,
+                                socket.y + sock_direction.y * sock_extent + .026f * (1.0f - displayed_force));
   sock_tip.x += -sock_direction.y * flutter;
   sock_tip.y += sock_direction.x * flutter;
   float sock = ocean_segment(hud, socket, sock_tip);

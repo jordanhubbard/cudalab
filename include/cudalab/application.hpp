@@ -7,6 +7,7 @@
 
 struct SDL_AudioStream;
 
+#include <array>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -21,7 +22,12 @@ public:
   ~Application();
   int run();
   int smoke_test();
-  int snapshot(const std::string& demo_name, float time, const std::filesystem::path& output_path);
+  int snapshot(const std::string& demo_name,
+               float time,
+               const std::filesystem::path& output_path,
+               float mouse_x = .58f,
+               float mouse_y = .43f,
+               int beaufort = 4);
 
 private:
   void draw_dockspace();
@@ -32,6 +38,9 @@ private:
   void load_demo(std::size_t index);
   void compile();
   void save();
+  void request_new_piece(bool clone);
+  bool create_piece();
+  void capture_frame();
   void format();
   void update_diagnostic_markers(const std::string& log);
   void reset_layout();
@@ -60,6 +69,12 @@ private:
   int frame_ = 0;
   int quality_ = 2;
   int beaufort_ = 4;
+  int preview_width_ = 0;
+  int preview_height_ = 0;
+  std::array<char, 64> new_piece_name_{};
+  std::array<char, 128> new_piece_title_{};
+  bool new_piece_popup_ = false;
+  bool clone_piece_ = false;
   bool paused_ = false;
   bool first_layout_ = true;
   bool running_ = true;

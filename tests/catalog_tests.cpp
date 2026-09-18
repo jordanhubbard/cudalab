@@ -14,6 +14,7 @@ int main() {
   assert(catalog.demos().front().name == "00-spectrum");
   for (const auto& demo : catalog.demos()) {
     assert(!demo.title.empty());
+    assert(!demo.controls.empty());
     assert(std::filesystem::exists(demo.directory / demo.entry));
     assert(demo.resources.size() <= 8);
     for (const auto& resource : demo.resources)
