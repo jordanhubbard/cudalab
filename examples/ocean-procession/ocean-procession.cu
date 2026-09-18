@@ -44,7 +44,7 @@ __device__ float2 ocean_wind(CudalabParams params) {
 
 // Height and exact first derivatives. Keeping the surface differentiable makes the
 // intersection and reflected image continuous even when the high-frequency bands move.
-__device__ float3 ocean_wave(float2 p, float time, int bands, float2 wind, int beaufort) {
+__device__ float3 ocean_wave(float2 p, float time, int bands, int beaufort) {
   float height = 0.0f;
   float gradient_x = 0.0f;
   float gradient_z = 0.0f;
@@ -74,11 +74,13 @@ __device__ float3 ocean_wave(float2 p, float time, int bands, float2 wind, int b
   amplitude = .135f * force;
   frequency = 1.12f + force * .35f;
   speed = .46f + force * 1.15f;
-  float wind_angle = atan2f(wind.y, wind.x);
   int wind_bands = bands > 8 ? bands - 7 : 1;
   for (int i = 0; i < wind_bands; ++i) {
     float spread = 1.05f - force * .56f;
-    float angle = wind_angle + spread * sinf(i * 2.3999632f + .7f);
+    // Wind strength changes geometric height, but direction never rotates the
+    // world-space heightfield. Directional wind detail is applied to normals
+    // and whitecaps below, keeping the camera and scene visually anchored.
+    float angle = -1.5707963f + spread * sinf(i * 2.3999632f + .7f);
     float2 direction = make_float2(cosf(angle), sinf(angle));
     float phase = (p.x * direction.x + p.y * direction.y) * frequency + time * speed + i * 1.17f;
     float sine = sinf(phase);
@@ -312,7 +314,7 @@ CUDALAB_RENDER {
   float water_t = ray.y < -.015f ? -ro.y / ray.y : 1e4f;
   for (int i = 0; i < iterations && water_t < 100.0f; ++i) {
     float3 point = ocean_add(ro, ocean_mul(ray, water_t));
-    float3 wave = ocean_wave(make_float2(point.x, point.z), params.time, bands, wind, params.beaufort);
+    float3 wave = ocean_wave(make_float2(point.x, point.z), params.time, bands, params.beaufort);
     float error = point.y - wave.x;
     float derivative = ray.y - wave.y * ray.x - wave.z * ray.z;
     float correction = error / copysignf(fmaxf(fabsf(derivative), .08f), derivative);
@@ -322,8 +324,13 @@ CUDALAB_RENDER {
   float3 color = ocean_sky(ray, params.time);
   if (water_t > 0.0f && water_t < 100.0f) {
     float3 point = ocean_add(ro, ocean_mul(ray, water_t));
-    float3 wave = ocean_wave(make_float2(point.x, point.z), params.time, bands, wind, params.beaufort);
-    float3 normal = ocean_norm(make_float3(-wave.y, 1.0f, -wave.z));
+    float3 wave = ocean_wave(make_float2(point.x, point.z), params.time, bands, params.beaufort);
+    float wind_force = params.beaufort / 9.0f;
+    float wind_phase = (point.x * wind.x + point.z * wind.y) * (6.0f + wind_force * 5.0f) -
+                       params.time * (2.0f + wind_force * 4.0f);
+    float wind_ripple = cosf(wind_phase) * wind_force * .11f;
+    float3 normal =
+        ocean_norm(make_float3(-wave.y + wind.x * wind_ripple, 1.0f, -wave.z + wind.y * wind_ripple));
     float facing = cudalab_saturate(-ocean_dot(ray, normal));
     float fresnel = .021f + .979f * powf(1.0f - facing, 5.0f);
 
@@ -338,7 +345,6 @@ CUDALAB_RENDER {
         ocean_wave(make_float2(point.x + refracted_ray.x * 2.2f, point.z + refracted_ray.z * 2.2f),
                    params.time + .35f,
                    bands,
-                   wind,
                    params.beaufort)
             .x;
     float caustic = powf(.5f + .5f * cosf(caustic_phase * 18.0f), 10.0f);
@@ -352,7 +358,6 @@ CUDALAB_RENDER {
     float slope = hypotf(wave.y, wave.z);
     float foam = cudalab_saturate((slope - .66f) * 1.8f);
     foam = foam * foam * (.70f + .30f * sinf(point.x * 5.0f + point.z * 4.0f + params.time));
-    float wind_force = params.beaufort / 9.0f;
     float downwind = point.x * wind.x + point.z * wind.y;
     float crosswind = point.x * -wind.y + point.z * wind.x;
     float wind_crest = powf(cudalab_saturate(.5f + .5f * sinf(downwind * (3.0f + wind_force * 4.5f) -
@@ -386,7 +391,7 @@ CUDALAB_RENDER {
   float ship_light = 1.0f;
   for (int ship = 0; ship < SHIP_COUNT && fleet; ++ship) {
     float2 center = make_float2(fleet[ship].motion.x, fleet[ship].motion.y);
-    float3 wave = ocean_wave(center, params.time, bands, wind, params.beaufort);
+    float3 wave = ocean_wave(center, params.time, bands, params.beaufort);
     float3 boat_up = ocean_norm(make_float3(-wave.y, 1.0f, -wave.z));
     float heading = fleet[ship].traits.x;
     float forward_x = cosf(heading);

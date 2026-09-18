@@ -54,7 +54,8 @@ CUDALAB_SIMULATE {
     radius *= 1.0f - local * .72f;
   float x = cosf(angle) * radius + (params.mouse_x - .5f) * .18f;
   float y = sinf(angle * (movement == 2 ? .5f : 1.0f)) * radius;
-  float energy = .35f + .65f * powf(sinf(pi * frac(u * 19 + local * 2)), 2.0f);
+  float pulse = sinf(pi * frac(u * 19 + local * 2));
+  float energy = .35f + .65f * pulse * pulse;
   score[i] = make_float4(x, y, energy, movement + hash11(i) * .2f);
 }
 

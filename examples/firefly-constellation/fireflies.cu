@@ -68,8 +68,9 @@ CUDALAB_RENDER {
   unsigned d = density[i];
   density[i] = (unsigned)(d * .936f);
   float e = log2f(1 + d * .018f);
-  float vign = 1 - .28f * (powf((x / (float)params.width - .5f) * 2, 2) +
-                           powf((y / (float)params.height - .5f) * 2, 2));
+  float vx = (x / (float)params.width - .5f) * 2;
+  float vy = (y / (float)params.height - .5f) * 2;
+  float vign = 1 - .28f * (vx * vx + vy * vy);
   float3 c = make_float3(.006f + .035f * e, .009f + .24f * e, .025f + .58f * e + .12f * e * e);
   c.x += .48f * fmaxf(0, e - 1.1f);
   c.y += .18f * fmaxf(0, e - 1.1f);

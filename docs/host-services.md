@@ -110,5 +110,20 @@ frame without opening the studio:
 The optional final three arguments set normalized pointer X/Y and Beaufort force, making
 interaction and weather states reproducible. This is intended for visual regression
 fixtures, documentation, and composition review.
+
+For a gallery-wide behavioral audit, run:
+
+```bash
+./build/dev/cudalab --interaction-probe captures/probe
+```
+
+The probe launches the same hidden SDL/OpenGL/CUDA application used for snapshots, then
+renders every package through five smooth 45-frame input intervals: centered, northwest,
+northeast with the primary button held, southeast with the button held, and southwest at
+calm wind. The intervals also sweep Beaufort force through 4, 2, 6, 9, and 0. Each endpoint
+is saved as a PPM, while `report.csv` records the injected state, final GPU time, and mean
+normalized RGB change from the preceding endpoint. The images are the authoritative visual
+check; the change metric is a useful warning for unexpectedly inert or overreactive pieces.
+
 The regular `--smoke-test` still compiles and renders every gallery entry, including graph,
 resource, timeline, and audio paths.

@@ -22,6 +22,8 @@ public:
   ~Application();
   int run();
   int smoke_test();
+  int interaction_probe(const std::filesystem::path& output_directory);
+  bool select_demo(const std::string& demo_name);
   int snapshot(const std::string& demo_name,
                float time,
                const std::filesystem::path& output_path,

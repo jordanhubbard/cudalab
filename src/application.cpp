@@ -373,18 +373,119 @@ int Application::smoke_test() {
   return failures == 0 ? 0 : 1;
 }
 
+int Application::interaction_probe(const std::filesystem::path& output_directory) {
+  struct Input {
+    float x;
+    float y;
+    int down;
+    int beaufort;
+    const char* label;
+  };
+  constexpr std::array inputs = {Input{.5f, .5f, 0, 4, "center"},
+                                 Input{.16f, .20f, 0, 2, "northwest"},
+                                 Input{.84f, .18f, 1, 6, "northeast-pressed"},
+                                 Input{.82f, .82f, 1, 9, "southeast-pressed"},
+                                 Input{.18f, .78f, 0, 0, "southwest-calm"}};
+  constexpr int width = 640;
+  constexpr int height = 360;
+  constexpr int frames_per_input = 45;
+  constexpr float step = 1.0f / 60.0f;
+
+  std::error_code error;
+  std::filesystem::create_directories(output_directory, error);
+  if (error)
+    throw std::runtime_error("Cannot create interaction probe directory: " + error.message());
+  std::ofstream report(output_directory / "report.csv", std::ios::trunc);
+  if (!report)
+    throw std::runtime_error("Cannot write interaction probe report");
+  report << "demo,sample,time,mouse_x,mouse_y,mouse_down,beaufort,gpu_ms,mean_rgb_change\n";
+
+  cuda_->resize(width, height);
+  int failures = 0;
+  for (std::size_t demo_index = 0; demo_index < catalog_.demos().size(); ++demo_index) {
+    load_demo(demo_index);
+    const std::string demo_name = catalog_.demos()[demo_index].name;
+    if (!last_compile_ok_) {
+      ++failures;
+      continue;
+    }
+    std::vector<unsigned char> previous;
+    float previous_x = inputs.front().x;
+    float previous_y = inputs.front().y;
+    int frame = 0;
+    float gpu_ms = 0.0f;
+    for (std::size_t sample = 0; sample < inputs.size(); ++sample) {
+      const Input from = sample == 0 ? inputs[0] : inputs[sample - 1];
+      const Input to = inputs[sample];
+      for (int local_frame = 0; local_frame < frames_per_input; ++local_frame, ++frame) {
+        const float linear = (local_frame + 1) / (float)frames_per_input;
+        const float blend = linear * linear * (3.0f - 2.0f * linear);
+        const float pointer_x = from.x + (to.x - from.x) * blend;
+        const float pointer_y = from.y + (to.y - from.y) * blend;
+        const int beaufort = static_cast<int>(lroundf(from.beaufort + (to.beaufort - from.beaufort) * blend));
+        FrameParams params{width,
+                           height,
+                           frame * step,
+                           step,
+                           pointer_x,
+                           pointer_y,
+                           frame,
+                           2,
+                           pointer_x - previous_x,
+                           pointer_y - previous_y,
+                           to.down,
+                           beaufort};
+        gpu_ms = cuda_->render(params);
+        previous_x = pointer_x;
+        previous_y = pointer_y;
+      }
+
+      std::vector<unsigned char> rgba(static_cast<std::size_t>(width) * height * 4);
+      glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+      glBindTexture(GL_TEXTURE_2D, cuda_->texture());
+      glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+      double change = 0.0;
+      if (!previous.empty()) {
+        for (std::size_t pixel = 0; pixel < static_cast<std::size_t>(width) * height; ++pixel)
+          for (int channel = 0; channel < 3; ++channel)
+            change += std::abs((int)rgba[pixel * 4 + channel] - (int)previous[pixel * 4 + channel]);
+        change /= static_cast<double>(width) * height * 3.0 * 255.0;
+      }
+      previous = rgba;
+
+      const auto path =
+          output_directory / (demo_name + "-" + std::to_string(sample) + "-" + inputs[sample].label + ".ppm");
+      std::ofstream image(path, std::ios::binary | std::ios::trunc);
+      image << "P6\n" << width << ' ' << height << "\n255\n";
+      for (std::size_t pixel = 0; pixel < static_cast<std::size_t>(width) * height; ++pixel)
+        image.write(reinterpret_cast<const char*>(rgba.data() + pixel * 4), 3);
+      report << demo_name << ',' << sample << ',' << frame * step << ',' << inputs[sample].x << ','
+             << inputs[sample].y << ',' << inputs[sample].down << ',' << inputs[sample].beaufort << ','
+             << gpu_ms << ',' << change << '\n';
+    }
+    SDL_Log("[probe] %s sampled at %zu interaction states", demo_name.c_str(), inputs.size());
+  }
+  return failures == 0 ? 0 : 1;
+}
+
+bool Application::select_demo(const std::string& demo_name) {
+  const auto match = std::ranges::find_if(
+      catalog_.demos(), [&](const Demo& demo) { return demo.name == demo_name || demo.title == demo_name; });
+  if (match == catalog_.demos().end())
+    return false;
+  load_demo(static_cast<std::size_t>(std::distance(catalog_.demos().begin(), match)));
+  return true;
+}
+
 int Application::snapshot(const std::string& demo_name,
                           float time,
                           const std::filesystem::path& output_path,
                           float mouse_x,
                           float mouse_y,
                           int beaufort) {
-  const auto match = std::ranges::find_if(
-      catalog_.demos(), [&](const Demo& demo) { return demo.name == demo_name || demo.title == demo_name; });
-  if (match == catalog_.demos().end()) {
+  if (!select_demo(demo_name)) {
     throw std::runtime_error("Unknown demo for snapshot: " + demo_name);
   }
-  load_demo(static_cast<std::size_t>(std::distance(catalog_.demos().begin(), match)));
   if (!last_compile_ok_)
     return 1;
 
@@ -649,10 +750,7 @@ void Application::draw_preview() {
     render_requested_ = false;
   }
   const ImVec2 top_left = ImGui::GetCursorScreenPos();
-  const bool firefly_view =
-      !catalog_.demos().empty() && catalog_.demos()[selected_].name == "firefly-constellation";
-  const ImVec2 preview_uv0 = firefly_view ? ImVec2(.5f, .5f) : ImVec2(0, 0);
-  ImGui::Image(static_cast<ImTextureID>(cuda_->texture()), area, preview_uv0, {1, 1});
+  ImGui::Image(static_cast<ImTextureID>(cuda_->texture()), area, {0, 0}, {1, 1});
   preview_hovered_ = ImGui::IsItemHovered();
   if (!catalog_.demos().empty()) {
     const auto& demo = catalog_.demos()[selected_];

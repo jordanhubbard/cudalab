@@ -56,6 +56,8 @@ cd cudalab
 cmake --preset dev
 cmake --build --preset dev
 ./build/dev/cudalab
+# Or open directly on one piece:
+./build/dev/cudalab --demo ocean-procession
 ```
 
 Windows (Developer PowerShell with CUDA and Visual Studio installed):
@@ -140,7 +142,13 @@ See [Architecture](docs/architecture.md), [CUDA editor and formatting](docs/edit
 cmake --preset dev
 cmake --build --preset dev
 ctest --preset dev
+./build/dev/cudalab --interaction-probe captures/probe
 ```
+
+The interaction probe drives every piece through five deterministic pointer, button, and
+Beaufort states. It writes frame captures plus `report.csv`, including GPU time and
+normalized frame-to-frame image change, so interaction and visual regressions can be
+reviewed as evidence rather than guessed from a compile result.
 
 The project targets portable C++20 today. CUDA 13.4 adds an NVCC C++23 mode; the
 runtime will adopt it after the supported-toolkit floor and host compiler matrix can do

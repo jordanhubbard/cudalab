@@ -9,11 +9,21 @@ int main(int argc, char** argv) {
   try {
     const bool smoke = argc > 1 && std::string_view(argv[1]) == "--smoke-test";
     const bool snapshot = argc > 1 && std::string_view(argv[1]) == "--snapshot";
+    const bool demo = argc > 1 && std::string_view(argv[1]) == "--demo";
+    const bool probe = argc > 1 && std::string_view(argv[1]) == "--interaction-probe";
     if (snapshot && argc != 5 && argc != 8) {
       std::cerr << "usage: cudalab --snapshot DEMO TIME OUTPUT.ppm [MOUSE_X MOUSE_Y BEAUFORT]\n";
       return 2;
     }
-    cudalab::Application app(smoke || snapshot);
+    if (demo && argc != 3) {
+      std::cerr << "usage: cudalab --demo NAME\n";
+      return 2;
+    }
+    if (probe && argc != 3) {
+      std::cerr << "usage: cudalab --interaction-probe OUTPUT_DIRECTORY\n";
+      return 2;
+    }
+    cudalab::Application app(smoke || snapshot || probe);
     if (smoke)
       return app.smoke_test();
     if (snapshot)
@@ -23,6 +33,12 @@ int main(int argc, char** argv) {
                           argc == 8 ? std::stof(argv[5]) : .58f,
                           argc == 8 ? std::stof(argv[6]) : .43f,
                           argc == 8 ? std::stoi(argv[7]) : 4);
+    if (probe)
+      return app.interaction_probe(argv[2]);
+    if (demo && !app.select_demo(argv[2])) {
+      std::cerr << "unknown demo: " << argv[2] << '\n';
+      return 2;
+    }
     return app.run();
   } catch (const std::exception& error) {
     std::cerr << "cudalab: " << error.what() << '\n';
