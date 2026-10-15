@@ -11,7 +11,7 @@ medium is native CUDA C++ rather than JavaScript.
 
 > **Status:** early, working studio. The live compiler, staged kernel lifecycle,
 > persistent device state, GPU audio, CUDA/OpenGL interop, package catalog, editor,
-> diagnostics, GPU timing, and first sixteen pieces are present. The roadmap deliberately
+> diagnostics, GPU timing, and first eighteen pieces are present. The roadmap deliberately
 > starts narrow and deep rather than shipping fifty mediocre demos.
 
 ## The first gallery
@@ -34,6 +34,12 @@ medium is native CUDA C++ rather than JavaScript.
 | **Choreograph** | Seekable four-movement CUDA graph performance with named GPU memory |
 | **Ocean Procession** | A many-octave sea with reflected sky, wakes, and a buoyant fleet |
 | **Volumetric Tempest** | Deep turbulent ray marching around a living lightning helix |
+| **The Last Cathedral** | Scored architectural flight, reflective obsidian, cyan vaults, and amber shafts |
+| **Eventide** | Orbital eclipse, volumetric planetary rings, atmospheric limb light, and stereo nocturne |
+
+The two [cinematic pieces](docs/cinematic-demos.md) are seekable 48-second performances
+with procedural stereo scores and choreographed cameras. Open them with
+`--demo last-cathedral` or `--demo eventide`.
 
 Every example is procedural, self-contained, live-editable, and runs through the same
 small staged ABI. A failed compile leaves the last good composition running.

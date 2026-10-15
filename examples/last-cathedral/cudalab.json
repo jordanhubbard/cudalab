@@ -1,0 +1,11 @@
+{
+  "name": "last-cathedral",
+  "title": "The Last Cathedral",
+  "description": "An endless obsidian nave, cyan vaults, amber light shafts, and a reflective processional flight in four scored movements.",
+  "category": "CINEMATIC",
+  "entry": "last-cathedral.cu",
+  "controls": "Move horizontally to steer · Move vertically to raise camera · Hold to intensify light · Seek the 48-second timeline · Audio toggle in preview",
+  "techniques": "SIMT distance-field marching · bounded reflection rays · volumetric shafts · GPU stereo synthesis",
+  "timeline_seconds": 48.0,
+  "bpm": 96.0
+}

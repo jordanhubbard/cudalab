@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(cudalab VERSION 0.1.0 LANGUAGES CXX)
+project(cudalab VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,12 +9,14 @@ option(CUDALAB_NATIVE_ARCH "Build the host for this machine's CPU" OFF)
 
 find_package(CUDAToolkit 13.0 REQUIRED)
 list(GET CUDAToolkit_INCLUDE_DIRS 0 CUDALAB_CUDA_INCLUDE_DIR)
-list(LENGTH CUDAToolkit_INCLUDE_DIRS CUDALAB_CUDA_INCLUDE_COUNT)
-if(CUDALAB_CUDA_INCLUDE_COUNT GREATER 1)
-  list(GET CUDAToolkit_INCLUDE_DIRS 1 CUDALAB_CCCL_INCLUDE_DIR)
-else()
-  set(CUDALAB_CCCL_INCLUDE_DIR "${CUDALAB_CUDA_INCLUDE_DIR}")
-endif()
+# CUDA 13 packages may place CUB under include/cccl without exposing that
+# directory in FindCUDAToolkit's include list. NVRTC needs its actual root.
+find_path(CUDALAB_CCCL_INCLUDE_DIR
+  NAMES cub/block/block_radix_sort.cuh
+  HINTS ${CUDAToolkit_INCLUDE_DIRS}
+  PATH_SUFFIXES cccl
+  REQUIRED
+)
 find_package(OpenGL REQUIRED)
 include(FetchContent)
 find_package(SDL3 CONFIG QUIET)

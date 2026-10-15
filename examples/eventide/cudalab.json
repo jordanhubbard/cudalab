@@ -1,0 +1,11 @@
+{
+  "name": "eventide",
+  "title": "Eventide",
+  "description": "A ringed world eclipses a distant sun: orbital camera choreography, atmospheric limb light, planetary shadows, and a procedural stereo nocturne.",
+  "category": "CINEMATIC",
+  "entry": "eventide.cu",
+  "controls": "Move horizontally to steer · Move vertically to raise camera · Hold to intensify light · Seek the 48-second timeline · Audio toggle in preview",
+  "techniques": "Analytic ray intersections · front-to-back ring integration · GPU stereo synthesis",
+  "timeline_seconds": 48.0,
+  "bpm": 96.0
+}

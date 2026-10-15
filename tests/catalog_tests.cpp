@@ -10,7 +10,7 @@ int main() {
   for (const auto& error : catalog.errors())
     std::cerr << error << '\n';
   assert(catalog.errors().empty());
-  assert(catalog.demos().size() >= 16);
+  assert(catalog.demos().size() >= 18);
   assert(catalog.demos().front().name == "00-spectrum");
   for (const auto& demo : catalog.demos()) {
     assert(!demo.title.empty());
@@ -28,6 +28,16 @@ int main() {
   assert(choreograph->resources.size() == 3);
   assert(choreograph->resources[0].kind == cudalab::ResourceKind::buffer);
   assert(choreograph->resources[1].kind == cudalab::ResourceKind::surface2d);
+  for (const auto* name : {"last-cathedral", "eventide"}) {
+    const auto cinematic = std::ranges::find(catalog.demos(), name, &cudalab::Demo::name);
+    assert(cinematic != catalog.demos().end());
+    assert(cinematic->category == "CINEMATIC");
+    assert(cinematic->timeline_seconds == 48.0f);
+    assert(cinematic->bpm == 96.0f);
+    // Arbitrary seeking needs no simulation warmup or persistent allocations.
+    assert(cinematic->state_bytes == 0);
+    assert(cinematic->resources.empty());
+  }
   const auto ocean = std::ranges::find(catalog.demos(), "ocean-procession", &cudalab::Demo::name);
   assert(ocean != catalog.demos().end());
   assert(ocean->work_items == 12);

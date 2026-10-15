@@ -22,6 +22,8 @@ sonically, or interactively compelling *and* its source makes the CUDA idea legi
 | CUDA graphs | **Choreograph** | A seekable, deterministic multi-part GPU performance | Shipped |
 | Iterative heightfields, flocking, and buoyancy | **Ocean Procession** | Conduct wind, waves, and a persistent collision-avoiding flotilla | Shipped |
 | Deep volumetric integration | **Volumetric Tempest** | Enter a turbulent cathedral wrapped around living lightning | Shipped |
+| SDF marching and bounded secondary rays | **The Last Cathedral** | Fly through reflected vaults and layered shafts with a GPU score | Shipped |
+| Analytic intersections and volume compositing | **Eventide** | Watch a ringed planet eclipse its sun, with a GPU nocturne | Shipped |
 | Streams, events, async allocation | **Confluence** | Independent visual and musical rivers meet without stalling | Next host-services wave |
 | `cuda::pipeline`, async copy, TMA | **Memory Weather** | Data arrival itself becomes wind and precipitation | Planned |
 | Cooperative groups and clusters | **City of Choirs** | Neighborhoods synchronize locally, then answer across a city | Planned |
