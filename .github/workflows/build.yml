@@ -15,7 +15,7 @@ jobs:
           method: network
           sub-packages: '["nvcc", "nvrtc", "cudart", "cccl"]'
       - name: Dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libgl-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxkbcommon-dev libwayland-dev wayland-protocols
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build libgl-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libasound2-dev libpulse-dev libxkbcommon-dev libwayland-dev wayland-protocols
       - name: Configure
         run: cmake --preset dev
       - name: Build
